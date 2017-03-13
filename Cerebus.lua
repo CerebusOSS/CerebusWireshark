@@ -150,8 +150,135 @@ local pconftypes = {
         [0xDD] = "cbPKTTYPE_SET_DOUTSET",
         [0x33] = "cbPKTTYPE_WAVEFORMREP",
         [0xB3] = "cbPKTTYPE_WAVEFORMSET",
-
 }
+
+local pconftypes_short = {
+        [0x00] = "heartbeat",
+        [0x01] = "protMon",
+        [0x5c] = "nPlayCfg",
+        [0xdc] = "nPlayCfg",
+        [0x5e] = "nPlayTr",
+        [0xde] = "nPlayTr",
+        [0x5f] = "vTrack",
+        [0xdf] = "vTrack",
+        [0x63] = "logEv",
+        [0xe3] = "logEv",
+        [0x88] = "config",
+        [0x08] = "config",
+        [0x10] = "sys",
+        [0x11] = "sys",
+        [0x12] = "sys",
+        [0x90] = "sys",
+        [0x91] = "sys",
+        [0x92] = "sys",
+        [0x29] = "vSynch",
+        [0xa9] = "vSynch",
+        [0x31] = "comment",
+        [0xb1] = "comment",
+        [0x32] = "nMotive",
+        [0xb2] = "nMotive",
+        [0x21] = "procI",
+        [0x22] = "bankI",
+        [0x23] = "filt",
+        [0xa3] = "filt",
+        [0x24] = "facDefault",
+        [0xa4] = "facDefault",
+        [0x25] = "aFilt",
+        [0xa5] = "aFilt",
+        [0x26] = "refEl",
+        [0xa6] = "refEl",
+        [0x27] = "nTrode",
+        [0xa7] = "nTrode",
+        [0x30] = "sGroup",
+        [0xb0] = "sGroup",
+        [0x40] = "aChan",
+        [0x41] = "aChan",
+        [0x42] = "aChan",
+        [0x43] = "aChan",
+        [0x44] = "aChan",
+        [0x45] = "aChan",
+        [0x46] = "aChan",
+        [0x47] = "aChan",
+        [0x48] = "aChan",
+        [0x49] = "aChan",
+        [0x4A] = "aChan",
+        [0x4B] = "aChan",
+        [0x4C] = "aChan",
+        [0x4D] = "aChan",
+        [0x4E] = "aChan",
+        [0x4F] = "aChan",
+        [0xC0] = "aChan",
+        [0xC1] = "aChan",
+        [0xC2] = "aChan",
+        [0xC3] = "aChan",
+        [0xC4] = "aChan",
+        [0xC5] = "aChan",
+        [0xC6] = "aChan",
+        [0xC7] = "aChan",
+        [0xC8] = "aChan",
+        [0xC9] = "aChan",
+        [0xCA] = "aChan",
+        [0xCB] = "aChan",
+        [0xCC] = "aChan",
+        [0xCD] = "aChan",
+        [0xCE] = "aChan",
+        [0xCF] = "aChan",
+        [0xE0] = "reflect",
+        [0xF0] = "reflect",
+        [0x7F] = "reflect",
+        [0x61] = "fileCfg",
+        [0xE1] = "fileCfg",
+        [0x64] = "patientI",
+        [0xE4] = "patientI",
+        [0x65] = "impedance",
+        [0xE5] = "impedance",
+        [0x67] = "poll",
+        [0xE7] = "poll",
+        [0x66] = "impInit",
+        [0xE6] = "impInit",
+        [0x68] = "mapfile",
+        [0xE8] = "mapfile",
+        [0x50] = "modelAll",
+        [0xD0] = "modelAll",
+        [0x51] = "spkModel",
+        [0xD1] = "spkModel",
+        [0x52] = "spkSort",
+        [0xD2] = "spkSort",
+        [0x53] = "artRej",
+        [0xD3] = "artRej",
+        [0x54] = "noiseBnd",
+        [0xD4] = "noiseBnd",
+        [0x55] = "spkStats",
+        [0xD5] = "spkStats",
+        [0x56] = "spkReset",
+        [0xD6] = "spkReset",
+        [0x57] = "spkStatus",
+        [0xD7] = "spkStatus",
+        [0x58] = "spkModelReset",
+        [0xD8] = "spkModelReset",
+        [0x59] = "spkPCAre",
+        [0xD9] = "spkPCAre",
+        [0x5B] = "spkFeat",
+        [0xDB] = "spkFeat",
+        [0x28] = "lncI",
+        [0xA8] = "lncI",
+        [0x5D] = "doutSet",
+        [0xDD] = "doutSet",
+        [0x33] = "waveCfg",
+        [0xB3] = "waveCfg",
+}
+
+-- these have chid == 0x8000 + chid
+local prvPktTypes = {
+    [0x81] = "cbPKTTYPE_PREVSETLNC",
+    [0x82] = "cbPKTTYPE_PREVSETSTREAM",
+    [0x83] = "cbPKTTYPE_PREVSET",
+    [0x03] = "cbPKTTYPE_PREVREP",
+    [0x01] = "cbPKTTYPE_PREVREPLNC",
+    [0x02] = "cbPKTTYPE_PREVREPSTREAM",
+}
+
+
 
 -- declare our protocol
 local cb_proto = Proto("Cerebus","Cerebus NSP Communication")
@@ -282,12 +409,9 @@ function cb_proto.dissector(buffer, pinfo, tree)
     if dlen > 0 then
         subtree:add(f.f_data, buffer(8, dlen * 4))
     end
---	subtree:add(buffer(6,1),"Packet type: " .. buffer(6,1):uint())
-    -- subtree = subtree:add(buffer(2,2),"The next two bytes")
-    -- subtree:add(buffer(2,1),"The 3rd byte: " .. buffer(2,1):uint())
-    -- subtree:add(buffer(3,1),"The 4th byte: " .. buffer(3,1):uint())
+
 end
 -- load the udp.port table
 udp_table = DissectorTable.get("udp.port")
--- register our protocol to handle udp port 7777
-udp_table:add(51001, cb_proto)
+-- register our protocol to handle udp port (default 51001)
+udp_table:add(default_settings.port, cb_proto)
