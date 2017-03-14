@@ -26,7 +26,8 @@ PktField = klass:new{
         UINT16=2,
         INT16=2,
         UINT32=4,
-        INT32=4
+        INT32=4,
+        FLOAT=4,
     },
     -- field=nil,
     -- _owner=nil,
@@ -56,7 +57,7 @@ function CbPkt:new(name, addfields)
     local newobj = klass:new()
     newobj.fields = {}
     for i, f in ipairs(self.fields) do
-        newobj.fields[i] = f
+        newobj.fields[i] = f:new()
     end
     newobj.name = name
     newobj.dfields = {}
@@ -102,6 +103,7 @@ function CbPkt:iterate(b_len)
             end
 
             local width = f:dataWidth()
+            local field_w = width
             if f.len ~= nil then
                 width = width * f.len
             elseif f.lf ~= nil and self.dfields[f.lf] ~= nil then
@@ -109,10 +111,12 @@ function CbPkt:iterate(b_len)
             end
             local old_buf_pos = buf_pos
             buf_pos = buf_pos + width
-
+            if f.t=='BYTES' or f.t=='STRING' then
+                field_w = width
+            end
             -- if we'd exceed buffer length (as passed through b_len) or dlen, stop by returning nil
             if (b_len ~= nil and buf_pos > b_len) or (dlen ~= nil and buf_pos > dlen) then return nil end
-            return i, old_buf_pos, width, f
+            return i, old_buf_pos, field_w, f
         end
     end
 end
@@ -172,8 +176,35 @@ function CbPktSysInfo:match(chid, type)
         [0x91] = true,
         [0x92] = true,
     }
-
     return chid == self._conf_pkg_ch and  p_types[type] ~= nil
+end
+
+-- System condition report packet
+CbPktSSModelSet = CbPkt:new('cbPKT_SS_MODELSET',
+    {
+        PktField:new{t='UINT32', n='chan', d='Channel being configured (zero-based)', format='DEC'},
+        PktField:new{t='UINT32', n='unit_number', d='unit number (0 = noise)', format='DEC'},
+        PktField:new{t='UINT32', n='valid', valuestring={[0]="invalid", [1]="valid"}, format='DEC'},
+        PktField:new{t='UINT32', n='inverted', valuestring={[0]="not inverted", [1]="inverted"}, format='DEC'},
+        PktField:new{t='INT32', n='num_samples', d='non-zero value means that the block stats are valid', format='DEC'},
+        PktField:new{t='FLOAT', n='mu', len=2},
+        PktField:new{t='FLOAT', n='Sigma_x', len=4},
+        PktField:new{t='FLOAT', n='determinant_Sigma_x'},
+        PktField:new{t='FLOAT', n='Sigma_x_inv', len=4},
+        PktField:new{t='FLOAT', n='log_determinant_Sigma_x'},
+        PktField:new{t='FLOAT', n='subcluster_spread_factor_numerator'},
+        PktField:new{t='FLOAT', n='subcluster_spread_factor_denominator'},
+        PktField:new{t='FLOAT', n='mu_e'},
+        PktField:new{t='FLOAT', n='sigma_e_squared'},
+
+    }
+)
+CbPktSSModelSet.fields['type'].valuestring = {
+    [0x51] = "SS Model response cbPKTTYPE_SS_MODELREP",
+    [0xD1] = "SS Model request cbPKTTYPE_SS_MODELSET",
+}
+function CbPktSSModelSet:match(chid, type)
+    return chid == self._conf_pkg_ch and self.fields['type'].valuestring[type] ~= nil
 end
 
 
@@ -236,17 +267,32 @@ function ProtoMaker:register()
         -- info("self.proto.dissector ...")
 
         pinfo.cols.protocol = self.colname
-        local chid = buffer(4,2):le_uint()
-        local ptype = buffer(6,1):uint()
-        local packet = CbPkt:match(chid, ptype)
-        -- info(packet.name)
-        pinfo.cols.info = packet.name
+        local buflen = buffer:len()
+        local offset = 0
+        local header_len = 8
+        local buf_remain = buffer():tvb()
+        local i = 0
+        while buflen >= header_len do
+            local chid = buf_remain(4,2):le_uint()
+            local ptype = buf_remain(6,1):uint()
+            local packet = CbPkt:match(chid, ptype)
+            -- get current
+            local packet_len = buf_remain(7,1):uint() * 4 + header_len
+            -- info(packet.name)
+            if i == 0 then
+                pinfo.cols.info = packet.name
+            end
 
-        local pktlen = buffer:len()
-        local subtree = tree:add(self.proto, buffer(0, pktlen), "Cerebus Protocol Data (" .. packet.name .. ")" )
+            local subtree = tree:add(self.proto, buf_remain(0, packet_len), "Cerebus Protocol Data (" .. packet.name .. ")" )
 
-        self:addSubtreeForPkt(buffer, subtree, packet)
-
+            self:addSubtreeForPkt(buf_remain(0, packet_len):tvb(), subtree, packet)
+            buflen = buflen - packet_len
+            buf_remain = buf_remain(packet_len):tvb()
+            i = i + 1
+        end
+        if i > 1 then
+            pinfo.cols.info:append(" (+ " .. (i-1) .. " others)")
+        end
     end
     local udp_table = DissectorTable.get("udp.port")
     -- register our protocol to handle udp port (default 51001)
