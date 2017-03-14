@@ -29,6 +29,15 @@ PktField = klass:new{
         INT32=4,
         FLOAT=4,
     },
+    _data_rng_getter={
+        UINT8='le_uint',
+        INT8='le_int',
+        UINT16='le_uint',
+        INT16='le_int',
+        UINT32='le_uint',
+        INT32='le_int',
+        FLOAT='le_float',
+    }
     -- field=nil,
     -- _owner=nil,
 
@@ -40,6 +49,9 @@ function PktField:dataWidth()
     local dw = self._data_width[self.t]
     return dw
 end
+function PktField:rangeGetter()
+    return self._data_rng_getter[self.t]
+end
 
 CbPkt = klass:new{
     name='HEADER',
@@ -47,7 +59,7 @@ CbPkt = klass:new{
         PktField:new{t='UINT32', n='time', d='Timestamp in tics'},
         PktField:new{t='UINT16', n='chid', format='HEX_DEC'},
         PktField:new{t='UINT8', n='type', format='HEX'},
-        PktField:new{t='UINT8', n='dlen'}
+        PktField:new{t='UINT8', n='dlen', d='Packet Data Length (in quadlets)'}
     },
     dfields={},
     pkttypes={},
@@ -104,19 +116,22 @@ function CbPkt:iterate(b_len)
 
             local width = f:dataWidth()
             local field_w = width
+            local mult = 1
             if f.len ~= nil then
-                width = width * f.len
+                mult = f.len
             elseif f.lf ~= nil and self.dfields[f.lf] ~= nil then
-                width = width * f.lfactor * self.dfields[f.lf]()()
+                mult = f.lfactor * self.dfields[f.lf]()()
             end
+            width = width * mult
             local old_buf_pos = buf_pos
             buf_pos = buf_pos + width
             if f.t=='BYTES' or f.t=='STRING' then
                 field_w = width
+                mult = 1
             end
             -- if we'd exceed buffer length (as passed through b_len) or dlen, stop by returning nil
             if (b_len ~= nil and buf_pos > b_len) or (dlen ~= nil and buf_pos > dlen) then return nil end
-            return i, old_buf_pos, field_w, f
+            return i, old_buf_pos, field_w, f, mult
         end
     end
 end
@@ -291,7 +306,7 @@ function ProtoMaker:register()
             i = i + 1
         end
         if i > 1 then
-            pinfo.cols.info:append(" (+ " .. (i-1) .. " others)")
+            pinfo.cols.info:append(" (+ " .. (i-1) .. " other" .. (i>2 and 's' or '') .. ")")
         end
     end
     local udp_table = DissectorTable.get("udp.port")
@@ -316,8 +331,17 @@ function ProtoMaker:makeFieldsForPacket(pkt)
 end
 
 function ProtoMaker:addSubtreeForPkt(buffer, tree, pkt)
-    for i, bPos, width, pf in pkt:iterate(buffer:len()) do
-        tree:add_le(self.fByPkt[pkt][pf.n], buffer(bPos, width))
+    for i, bPos, width, pf, mult in pkt:iterate(buffer:len()) do
+        local subtree = tree:add_le(self.fByPkt[pkt][pf.n], buffer(bPos, width))
+        if mult > 1 then
+            local n = mult - 1
+            subtree:append_text(" and "..n.." more item"..(n>1 and "s" or ""))
+            for i=1,n do
+                local brng = buffer(bPos + width * i, width)
+                subtree:add( brng, 'item '..i..': ' .. brng[pf:rangeGetter()](brng))
+                -- subtree:add_le('it '..(i-1)..':', brng)--, brng[pf:rangeGetter()](brng))
+            end
+        end
     end
 
 end
