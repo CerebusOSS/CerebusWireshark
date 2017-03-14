@@ -1,6 +1,103 @@
 info("")
 info("Loading Cerebus protocol v 2")
 
+-- implementation of a simple stack
+Stack = {}
+
+-- Create a Table with stack functions
+function Stack:Create(default_element)
+
+  -- stack table
+  local t = {}
+  -- entry table
+  t._et = {}
+  t._default_element = default_element
+
+  -- push a value on to the stack
+  function t:push(...)
+    if ... then
+      local targs = {...}
+      -- add values
+      for _,v in ipairs(targs) do
+        table.insert(self._et, v)
+      end
+    end
+  end
+
+  -- pop a value from the stack
+  function t:pop(num)
+
+    -- get num values from stack
+    local num = num or 1
+
+    -- return table
+    local entries = {}
+
+    -- get values into entries
+    for i = 1, num do
+      -- get last entry
+      if #self._et ~= 0 then
+        table.insert(entries, self._et[#self._et])
+        -- remove last value
+        table.remove(self._et)
+      else
+        break
+      end
+    end
+    -- if we get fewer entries than requested, also include default (if not nil)
+    if #entries < num and self._default_element ~= nil then
+        table.insert(entries, self._default_element)
+    end
+
+    -- return unpacked entries
+    return unpack(entries)
+  end
+
+  -- get entries
+  function t:getn()
+    return #self._et
+  end
+
+  -- list values
+  function t:list()
+    for i,v in pairs(self._et) do
+      print(i, v)
+    end
+  end
+
+  -- get last entry without removing
+  function t:last()
+      return #self._et > 0 and self._et[#self._et] or self._default_element
+  end
+
+  return t
+end
+
+
+local cbConst = {}
+cbConst.cbMAXHOOPS = 4
+cbConst.cbMAXSITES = 4
+cbConst.cbMAXSITEPLOTS = ((cbConst.cbMAXSITES - 1) * cbConst.cbMAXSITES / 2)
+cbConst.cbNUM_FE_CHANS        = 128                                       -- #Front end channels
+cbConst.cbNUM_ANAIN_CHANS     = 16                                        -- #Analog Input channels
+cbConst.cbNUM_ANALOG_CHANS    = (cbConst.cbNUM_FE_CHANS + cbConst.cbNUM_ANAIN_CHANS)      -- Total Analog Inputs
+cbConst.cbNUM_ANAOUT_CHANS    = 4                                         -- #Analog Output channels
+cbConst.cbNUM_AUDOUT_CHANS    = 2                                         -- #Audio Output channels
+cbConst.cbNUM_ANALOGOUT_CHANS = (cbConst.cbNUM_ANAOUT_CHANS + cbConst.cbNUM_AUDOUT_CHANS) -- Total Analog Output
+cbConst.cbNUM_DIGIN_CHANS     = 1                                         -- #Digital Input channels
+cbConst.cbNUM_SERIAL_CHANS    = 1                                         -- #Serial Input channels
+cbConst.cbNUM_DIGOUT_CHANS    = 4                                         -- #Digital Output channels
+-- Total of all channels = 156
+cbConst.cbMAXCHANS            = (cbConst.cbNUM_ANALOG_CHANS +
+    cbConst.cbNUM_ANALOGOUT_CHANS + cbConst.cbNUM_DIGIN_CHANS +
+    cbConst.cbNUM_SERIAL_CHANS + cbConst.cbNUM_DIGOUT_CHANS)
+cbConst.cbLEN_STR_UNIT        = 8
+cbConst.cbLEN_STR_LABEL       = 16
+cbConst.cbLEN_STR_FILT_LABEL  = 16
+cbConst.cbLEN_STR_IDENT       = 64
+cbConst.cbMAXUNITS            = 5
+cbConst.cbMAXNTRODES          = (cbConst.cbNUM_ANALOG_CHANS / 2)
+
 klass = {}
 function klass:new (o)
   o = o or {}
@@ -9,13 +106,19 @@ function klass:new (o)
   return o
 end
 
-PktField = klass:new{
-    t='UINT8',
+AField = klass:new{
     n='name',
+    d=nil,
+    ftype='afield',
+}
+
+
+PktField = AField:new{
+    ftype='pktfield',
+    t='UINT8',
     lf=nil,
     lfactor=1,
     len=nil,
-    d=nil,
     format='NONE',
     valuestring=nil,
     mask=nil,
@@ -28,6 +131,7 @@ PktField = klass:new{
         UINT32=4,
         INT32=4,
         FLOAT=4,
+        STRING=1,
     },
     _data_rng_getter={
         UINT8='le_uint',
@@ -38,12 +142,6 @@ PktField = klass:new{
         INT32='le_int',
         FLOAT='le_float',
     }
-    -- field=nil,
-    -- _owner=nil,
-
-    -- new=function(self, type, name, lenfield)
-    --     return klass.new(self, {t=type, n=name, lenfield=lenfield})
-    -- end
 }
 function PktField:dataWidth()
     local dw = self._data_width[self.t]
@@ -109,6 +207,10 @@ function CbPkt:iterate(b_len)
         i = i + 1
         if i <= n then
             local f = self.fields[i]
+            if f.ftype=='afield' then
+                return i, buf_pos, 0, f, 1
+            end
+
             -- if dlen hasn't been read yet, test if it is available, read it from field; add header size
             if dlen == nil and self.dfields['dlen'] ~= nil and self.dfields['dlen']() ~= nil then
                 dlen =  8 + self.dfields['dlen']()() * 4
@@ -135,6 +237,16 @@ function CbPkt:iterate(b_len)
         end
     end
 end
+
+-- Subclass for config packets. They all share that
+-- chid == 0x8000 and 'type' corresponds to
+CbPktConfig = CbPkt:new('')
+function CbPktConfig:match(chid, type)
+    return chid == self._conf_pkg_ch and
+        self.fields['type'].valuestring ~= nil and
+        self.fields['type'].valuestring[type] ~= nil
+end
+
 
 -- Generic packets
 
@@ -194,8 +306,9 @@ function CbPktSysInfo:match(chid, type)
     return chid == self._conf_pkg_ch and  p_types[type] ~= nil
 end
 
+
 -- System condition report packet
-CbPktSSModelSet = CbPkt:new('cbPKT_SS_MODELSET',
+CbPktSSModelSet = CbPktConfig:new('cbPKT_SS_MODELSET',
     {
         PktField:new{t='UINT32', n='chan', d='Channel being configured (zero-based)', format='DEC'},
         PktField:new{t='UINT32', n='unit_number', d='unit number (0 = noise)', format='DEC'},
@@ -218,11 +331,123 @@ CbPktSSModelSet.fields['type'].valuestring = {
     [0x51] = "SS Model response cbPKTTYPE_SS_MODELREP",
     [0xD1] = "SS Model request cbPKTTYPE_SS_MODELSET",
 }
-function CbPktSSModelSet:match(chid, type)
-    return chid == self._conf_pkg_ch and self.fields['type'].valuestring[type] ~= nil
-end
+
+-- NTrode Information Packets
+CbPktNTrodeInfo = CbPktConfig:new('cbPKT_NTRODEINFO',
+    {
+        PktField:new{t='UINT32', n='ntrode', d='nTrode being configured (1-based)', format='DEC'},
+        PktField:new{t='STRING', n='label', d='nTrode label', len=cbConst.cbLEN_STR_LABEL},
+        AField:new{n='placeholder', d='→ Other fields of this packet have not been implemented yet. ←'}
+        -- typedef struct {
+        --     INT16       nOverride;
+        --     INT16       afOrigin[3];
+        --     INT16       afShape[3][3];
+        --     INT16       aPhi;
+        --     UINT32      bValid; // is this unit in use at this time?
+        --                         // BOOL implemented as UINT32 - for structure alignment at paragraph boundary
+        -- } cbMANUALUNITMAPPING;
+        -- cbMANUALUNITMAPPING ellipses[cbMAXSITEPLOTS][cbMAXUNITS];  // unit mapping
+        -- UINT16 nSite;          // number channels in this NTrode ( 0 <= nSite <= cbMAXSITES)
+        -- UINT16 fs;             // NTrode feature space cbNTRODEINFO_FS_*
+        -- UINT16 nChan[cbMAXSITES];  // group of channels in this NTrode
+    }
+)
+CbPktNTrodeInfo.fields['type'].valuestring = {
+    [0x27] = "NTrode info response cbPKTTYPE_REPNTRODEINFO",
+    [0xA7] = "NTrode info request cbPKTTYPE_SETNTRODEINFO",
+}
+
+-- Channel Information Packets
+CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
+    {
+        PktField:new{t='UINT32', n='chan', d='channel being configured', format='DEC'},
+        PktField:new{t='UINT32', n='proc', d='address of the processor', format='DEC'},
+        PktField:new{t='UINT32', n='bank', d='address of the bank', format='DEC'},
+        PktField:new{t='UINT32', n='term', d='terminal number', format='DEC_HEX'},
+        PktField:new{t='UINT32', n='chancaps', d='channel capabilities', format='HEX'},
+        PktField:new{t='UINT32', n='doutcaps', d='digital output capablities', format='HEX'},
+        PktField:new{t='UINT32', n='dinpcaps', d='digital input capablities', format='HEX'},
+        PktField:new{t='UINT32', n='aoutcaps', d='analog output capablities', format='HEX'},
+        PktField:new{t='UINT32', n='ainpcaps', d='analog input capablities', format='HEX'},
+        PktField:new{t='UINT32', n='spkcaps', d='spike capablities', format='HEX'},
+
+        AField:new{n='physcalin', d='physical channel scaling information'},
+        PktField:new{t='INT16', n='physcalin.digmin', d='digital value that cooresponds with the anamin value'},
+        PktField:new{t='INT16', n='physcalin.digmax', d='digital value that cooresponds with the anamax value'},
+        PktField:new{t='INT32', n='physcalin.anamin', d='minimum analog value present in the signal'},
+        PktField:new{t='INT32', n='physcalin.anamax', d='maximum analog value present in the signal'},
+        PktField:new{t='INT32', n='physcalin.anagain', d='gain applied to the default analog values to get the analog values'},
+        PktField:new{t='STRING', n='physcalin.anaunit', d='nTrode label', len=cbConst.cbLEN_STR_UNIT},
+
+        AField:new{n='phyfiltin', d='physical channel filter definition'},
+        PktField:new{t='STRING', n='phyfiltin.label', d='filter label', len=cbConst.cbLEN_STR_FILT_LABEL},
+        PktField:new{t='UINT32', n='phyfiltin.hpfreq', d='high-pass corner frequency in milliHertz'},
+        PktField:new{t='UINT32', n='phyfiltin.hporder', d='high-pass filter order'},
+        PktField:new{t='UINT32', n='phyfiltin.hptype', d='high-pass filter type', format='HEX'},
+        PktField:new{t='UINT32', n='phyfiltin.lpfreq', d='low-pass frequency in milliHertz'},
+        PktField:new{t='UINT32', n='phyfiltin.lporder', d='low-pass filter order'},
+        PktField:new{t='UINT32', n='phyfiltin.lptype', d='low-pass filter type', format='HEX'},
+
+        -- PktField:new{t='STRING', n='label', d='nTrode label', len=cbConst.cbLEN_STR_LABEL},
+        AField:new{n='placeholder', d='→ Other fields of this packet have not been implemented yet. ←'},
+        -- typedef struct {
+        --     INT16   digmin;     // digital value that cooresponds with the anamin value
+        --     INT16   digmax;     // digital value that cooresponds with the anamax value
+        --     INT32   anamin;     // the minimum analog value present in the signal
+        --     INT32   anamax;     // the maximum analog value present in the signal
+        --     INT32   anagain;    // the gain applied to the default analog values to get the analog values
+        --     char    anaunit[cbLEN_STR_UNIT]; // the unit for the analog signal (eg, "uV" or "MPa")
+        -- } cbSCALING;
+
+        -- typedef struct {
+        --     char    label[cbLEN_STR_FILT_LABEL];
+        --     UINT32  hpfreq;     // high-pass corner frequency in milliHertz
+        --     UINT32  hporder;    // high-pass filter order
+        --     UINT32  hptype;     // high-pass filter type
+        --     UINT32  lpfreq;     // low-pass frequency in milliHertz
+        --     UINT32  lporder;    // low-pass filter order
+        --     UINT32  lptype;     // low-pass filter type
+        -- } cbFILTDESC;
+
+    }
+)
+CbPktChanInfo.fields['type'].valuestring = {
+    [0x40] = "cbPKTTYPE_CHANREP",
+    [0x41] = "cbPKTTYPE_CHANREPLABEL",
+    [0x42] = "cbPKTTYPE_CHANREPSCALE",
+    [0x43] = "cbPKTTYPE_CHANREPDOUT",
+    [0x44] = "cbPKTTYPE_CHANREPDINP",
+    [0x45] = "cbPKTTYPE_CHANREPAOUT",
+    [0x46] = "cbPKTTYPE_CHANREPDISP",
+    [0x47] = "cbPKTTYPE_CHANREPAINP",
+    [0x48] = "cbPKTTYPE_CHANREPSMP",
+    [0x49] = "cbPKTTYPE_CHANREPSPK",
+    [0x4A] = "cbPKTTYPE_CHANREPSPKTHR",
+    [0x4B] = "cbPKTTYPE_CHANREPSPKHPS",
+    [0x4C] = "cbPKTTYPE_CHANREPUNITOVERRIDES",
+    [0x4D] = "cbPKTTYPE_CHANREPNTRODEGROUP",
+    [0x4E] = "cbPKTTYPE_CHANREPREJECTAMPLITUDE",
+    [0x4F] = "cbPKTTYPE_CHANREPAUTOTHRESHOLD",
+    [0xC0] = "cbPKTTYPE_CHANSET",
+    [0xC1] = "cbPKTTYPE_CHANSETLABEL",
+    [0xC2] = "cbPKTTYPE_CHANSETSCALE",
+    [0xC3] = "cbPKTTYPE_CHANSETDOUT",
+    [0xC4] = "cbPKTTYPE_CHANSETDINP",
+    [0xC5] = "cbPKTTYPE_CHANSETAOUT",
+    [0xC6] = "cbPKTTYPE_CHANSETDISP",
+    [0xC7] = "cbPKTTYPE_CHANSETAINP",
+    [0xC8] = "cbPKTTYPE_CHANSETSMP",
+    [0xC9] = "cbPKTTYPE_CHANSETSPK",
+    [0xCA] = "cbPKTTYPE_CHANSETSPKTHR",
+    [0xCB] = "cbPKTTYPE_CHANSETSPKHPS",
+    [0xCC] = "cbPKTTYPE_CHANSETUNITOVERRIDES",
+    [0xCD] = "cbPKTTYPE_CHANSETNTRODEGROUP",
+    [0xCE] = "cbPKTTYPE_CHANSETREJECTAMPLITUDE",
+    [0xCF] = "cbPKTTYPE_CHANSETAUTOTHRESHOLD",
+}
 
 
+-- Preview Stream
 CbPktStreamPrev = CbPkt:new('cbPKT_STREAMPREV',
     {
         PktField:new{t='INT16', n='rawmin', format='DEC'},
@@ -318,36 +543,56 @@ function ProtoMaker:makeFieldsForPacket(pkt)
     local fn = pkt.name .. "_"
     self.fByPkt[pkt] = {}
     for i, f in ipairs(pkt.fields) do
-        local thisfn = fn .. f.n
-        local thisn = n .. f.n
-        local pf = ProtoField.new(f.d and f.d or f.n, thisn, ftypes[f.t], f.valuestring, base[f.format], f.mask, f.d)
-        self.pfields[thisfn] = pf
-        self.fByPkt[pkt][f.n] = pf
-        local df = Field.new(thisn)
-        table.insert(pkt.dfields, df)
-        pkt.dfields[f.n] = df
+        if f.ftype~='afield' then
+            local thisfn = fn .. f.n
+            local thisn = n .. f.n
+            local pf = ProtoField.new(f.d and f.d or f.n, thisn, ftypes[f.t], f.valuestring, base[f.format], f.mask, f.d)
+            self.pfields[thisfn] = pf
+            self.fByPkt[pkt][f.n] = pf
+            local df = Field.new(thisn)
+            table.insert(pkt.dfields, df)
+            pkt.dfields[f.n] = df
+        end
     end
      -- .. " " .. pkt.dfields[f.n] .. " " .. self.fByPkt[pkt])
 end
 
 function ProtoMaker:addSubtreeForPkt(buffer, tree, pkt)
+    local tree_stack = Stack:Create({t=tree, p=""})
+
     for i, bPos, width, pf, mult in pkt:iterate(buffer:len()) do
-        local subtree = tree:add_le(self.fByPkt[pkt][pf.n], buffer(bPos, width))
-        if mult > 1 then
-            local n = mult - 1
-            subtree:append_text(" and "..n.." more item"..(n>1 and "s" or ""))
-            for i=1,n do
-                local brng = buffer(bPos + width * i, width)
-                subtree:add( brng, 'item '..i..': ' .. brng[pf:rangeGetter()](brng))
-                -- subtree:add_le('it '..(i-1)..':', brng)--, brng[pf:rangeGetter()](brng))
+        local current_parent = nil
+        repeat
+            local last_tree = tree_stack:last()
+            local i,j = string.find(pf.n, last_tree.p)
+            if i==1 and j > 0 and string.sub(pf.n, j+1, j+1)=='.' then
+                current_parent = last_tree.t
+                -- tree_stack:push(last_tree)
+            elseif i==1 and j==0 then
+                current_parent = last_tree.t
+            else
+                tree_stack:pop()
+            end
+        until current_parent ~= nil
+        local subtree
+        if pf.ftype == 'afield' then
+            subtree = current_parent:add(pf.d ~= nil and pf.d or pf.n )
+        else
+            subtree = current_parent:add_le(self.fByPkt[pkt][pf.n], buffer(bPos, width))
+            if mult > 1 then
+                local n = mult - 1
+                subtree:append_text(" and "..n.." more item"..(n>1 and "s" or ""))
+                for i=1,n do
+                    local brng = buffer(bPos + width * i, width)
+                    subtree:add( brng, 'item '..i..': ' .. brng[pf:rangeGetter()](brng))
+                end
             end
         end
-    end
+        tree_stack:push({t=subtree, p=pf.n})
 
+    end
 end
 
 
 local pm = ProtoMaker:new()
--- pm:makeFieldsForPacket(CbPktStreamPrev)
--- pm:makeFieldsForPacket(CbPktGeneric)
 pm:register()
