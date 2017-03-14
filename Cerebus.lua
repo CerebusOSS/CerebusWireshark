@@ -1,7 +1,15 @@
-info("")
-info("Loading Cerebus protocol v 2")
+-- Wireshark dissector for UDP packets exchanged between
+-- Neural Signal Processors and controlling PCs
+--
+-- Copyright 2017 Jonas Zimmermann
 
--- implementation of a simple stack
+info("Loading cb protocol ...")
+
+
+-- Definition of a few helpers
+
+-- implementation of a simple stack (Lifted from http://lua-users.org/wiki/SimpleStack)
+-- and extended
 Stack = {}
 
 -- Create a Table with stack functions
@@ -73,7 +81,7 @@ function Stack:Create(default_element)
   return t
 end
 
-
+-- define Constants, lifted from cbhwlib.h
 local cbConst = {}
 cbConst.cbMAXHOOPS = 4
 cbConst.cbMAXSITES = 4
@@ -111,6 +119,8 @@ cbConst.cbPKT_SPKCACHELINECNT = cbConst.cbNUM_ANALOG_CHANS
 
 cbConst.cbMAX_PNTS            = 128
 
+
+-- base of our rudimentary class system
 klass = {}
 function klass:new (o)
   o = o or {}
@@ -172,6 +182,7 @@ FlagField = AField:new{
     ftype='flagfield',
 }
 
+-- All Packets derive from CbPkt, which defines the packet header
 CbPkt = klass:new{
     name='HEADER',
     fields={
@@ -221,9 +232,7 @@ function CbPkt:iterate(b_len)
     local buf_pos=0
     -- store how many bytes we expect in total. That's composed of 8 header bytes and the reported 'dlen'
     local dlen
-    -- for k,v in pairs(self.dfields) do
-    --     info("iterate key: " .. k .. " " .. v())
-    -- end
+
     return function()
         i = i + 1
         if i <= n then
@@ -278,6 +287,7 @@ function CbPktPrevStreamBase:match(chid, type)
         self.fields['type'].valuestring[type] ~= nil
 end
 
+-- Packet definitions start here
 
 -- Generic packets
 
@@ -919,9 +929,12 @@ CbPktNevDigIn = CbPkt:new('nevPKT_DIGIN',
 CbPktNevDigIn.fields['type'].d='Packet Type'
 CbPktNevDigIn.fields['type'].format='DEC'
 function CbPktNevDigIn:match(chid, type)
-    info(cbConst.cbFIRST_DIGIN_CHAN)
     return (cbConst.cbFIRST_DIGIN_CHAN < chid) and (chid <= cbConst.cbFIRST_DIGIN_CHAN+cbConst.cbNUM_DIGIN_CHANS)
 end
+
+
+-- Packet definitions end here.
+
 
 -- Now we define something that will make our protocol
 
@@ -932,14 +945,12 @@ ProtoMaker = klass:new{
     port=51001
 }
 function ProtoMaker:new(o)
-    -- info("ProtoMaker:new")
     o = o or {}
     local newobj = klass.new(self)
     for k,v in pairs(o) do newobj[k] = v end
     newobj.proto = Proto(newobj.name, newobj.desc)
     newobj.pfields = newobj.proto.fields
     newobj.fByPkt = {}
-    -- info("ProtoMaker:new proto ..." .. newobj.name ..", " .. newobj.desc)
     return newobj
 end
 function ProtoMaker:register()
@@ -951,8 +962,6 @@ function ProtoMaker:register()
 
 
     function self.proto.dissector(buffer, pinfo, tree)
-        -- info("self.proto.dissector ...")
-
         pinfo.cols.protocol = self.colname
         local buflen = buffer:len()
         local offset = 0
@@ -965,7 +974,7 @@ function ProtoMaker:register()
             local packet = CbPkt:match(chid, ptype)
             -- get current
             local packet_len = buf_remain(7,1):uint() * 4 + header_len
-            -- info(packet.name)
+
             if i == 0 then
                 pinfo.cols.info = packet.name
             end
@@ -1061,6 +1070,6 @@ function ProtoMaker:addSubtreeForPkt(buffer, tree, pkt)
     end
 end
 
-
+-- instantiate Protocol maker
 local pm = ProtoMaker:new()
 pm:register()
