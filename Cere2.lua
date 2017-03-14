@@ -91,12 +91,25 @@ cbConst.cbNUM_DIGOUT_CHANS    = 4                                         -- #Di
 cbConst.cbMAXCHANS            = (cbConst.cbNUM_ANALOG_CHANS +
     cbConst.cbNUM_ANALOGOUT_CHANS + cbConst.cbNUM_DIGIN_CHANS +
     cbConst.cbNUM_SERIAL_CHANS + cbConst.cbNUM_DIGOUT_CHANS)
+
+cbConst.cbFIRST_FE_CHAN       = 0                                                          -- 0   First Front end channel
+cbConst.cbFIRST_ANAIN_CHAN    = cbConst.cbNUM_FE_CHANS                                     -- 256 First Analog Input channel
+cbConst.cbFIRST_ANAOUT_CHAN   = (cbConst.cbFIRST_ANAIN_CHAN + cbConst.cbNUM_ANAIN_CHANS)   -- 288 First Analog Output channel
+cbConst.cbFIRST_AUDOUT_CHAN   = (cbConst.cbFIRST_ANAOUT_CHAN + cbConst.cbNUM_ANAOUT_CHANS) -- 296 First Audio Output channel
+cbConst.cbFIRST_DIGIN_CHAN    = (cbConst.cbFIRST_AUDOUT_CHAN + cbConst.cbNUM_AUDOUT_CHANS) -- 300 First Digital Input channel
+cbConst.cbFIRST_SERIAL_CHAN   = (cbConst.cbFIRST_DIGIN_CHAN + cbConst.cbNUM_DIGIN_CHANS)   -- 302 First Serial Input channel
+cbConst.cbFIRST_DIGOUT_CHAN   = (cbConst.cbFIRST_SERIAL_CHAN + cbConst.cbNUM_SERIAL_CHANS) -- 304 First Digital Output channel
+
+
 cbConst.cbLEN_STR_UNIT        = 8
 cbConst.cbLEN_STR_LABEL       = 16
 cbConst.cbLEN_STR_FILT_LABEL  = 16
 cbConst.cbLEN_STR_IDENT       = 64
 cbConst.cbMAXUNITS            = 5
 cbConst.cbMAXNTRODES          = (cbConst.cbNUM_ANALOG_CHANS / 2)
+cbConst.cbPKT_SPKCACHELINECNT = cbConst.cbNUM_ANALOG_CHANS
+
+cbConst.cbMAX_PNTS            = 128
 
 klass = {}
 function klass:new (o)
@@ -569,6 +582,53 @@ CbPktSSStatus.fields['type'].valuestring = {
     [0xD7] = "SS Status Request cbPKTTYPE_SS_STATUSSET",
 }
 
+-- SS Recalc packets
+CbPktSSRecalc = CbPktConfig:new('cbPKT_SS_RECALC',
+    {
+
+        PktField:new{t='UINT32', n='chan',format='DEC', d="Channel (1-based). If 0, perform for all"},
+        PktField:new{t='UINT32', n='mode', d='mode', format='HEX', valuestring={
+            [0]="PC ->NSP start recalculation cbPCA_RECALC_START",
+            [1]="NSP->PC  finished recalculation cbPCA_RECALC_STOPPED",
+            [2]="NSP->PC  waveform collection started cbPCA_COLLECTION_STARTED",
+            [3]="Change the basis of feature space cbBASIS_CHANGE",
+            [4]="cbUNDO_BASIS_CHANGE",
+            [5]="cbREDO_BASIS_CHANGE",
+            [6]="cbINVALIDATE_BASIS",
+        }},
+    }
+)
+CbPktSSRecalc.fields['type'].valuestring = {
+    [0x59] = "SS Recalc Report cbPKTTYPE_SS_RECALCREP",
+    [0xD9] = "SS Recalc Request cbPKTTYPE_SS_RECALCSET",
+}
+
+-- Feature Space Basis Packets
+CbPktFSBasis = CbPktConfig:new('cbPKT_FS_BASIS',
+    {
+
+        PktField:new{t='UINT32', n='chan',format='DEC', d="Channel (1-based)"},
+        PktField:new{t='UINT32', n='mode', d='mode', format='HEX', valuestring={
+            [0]="PC ->NSP start recalculation cbPCA_RECALC_START",
+            [1]="NSP->PC  finished recalculation cbPCA_RECALC_STOPPED",
+            [2]="NSP->PC  waveform collection started cbPCA_COLLECTION_STARTED",
+            [3]="Change the basis of feature space cbBASIS_CHANGE",
+            [4]="cbUNDO_BASIS_CHANGE",
+            [5]="cbREDO_BASIS_CHANGE",
+            [6]="cbINVALIDATE_BASIS",
+        }},
+        PktField:new{t='UINT32', n='fs',format='DEC', d="Feature space: cbAUTOALG_PCA"},
+        PktField:new{t='FLOAT', n='basis', d='Room for all possible points collected'},
+        AField:new{n='notImpl', d="→ Variable number of points not imlpemented ←"},
+
+    }
+)
+CbPktFSBasis.fields['type'].valuestring = {
+    [0x5B] = "FS Basis Report cbPKTTYPE_FS_BASISREP",
+    [0xDB] = "FS Basis Request cbPKTTYPE_FS_BASISSET",
+}
+
+
 
 -- Sample Group Information packets
 CbPktGroupInfo = CbPktConfig:new('cbPKT_GROUPINFO',
@@ -729,6 +789,32 @@ CbPktLNC.fields['type'].valuestring = {
 }
 
 
+-- cbPKT_NM
+CbPktNM = CbPktConfig:new('cbPKT_NM',
+    {
+        PktField:new{t='UINT32', n='mode', valuestring=
+            {
+                [0]="cbNM_MODE_NONE",
+                [1]="cbNM_MODE_CONFIG Ask NeuroMotive for configuration",
+                [2]="cbNM_MODE_SETVIDEOSOURCE Configure video source",
+                [3]="cbNM_MODE_SETTRACKABLE Configure trackable",
+                [4]="cbNM_MODE_STATUS NeuroMotive status reporting (cbNM_STATUS_*)",
+                [5]="cbNM_MODE_TSCOUNT Timestamp count (value is the period with 0 to disable this mode)",
+                [6]="cbNM_MODE_SYNCHCLOCK Start (or stop) synchronization clock (fps*1000 specified by value, zero fps to stop capture)",
+                [7]="cbNM_MODE_ASYNCHCLOCK Asynchronous clock",
+            }
+        },
+        PktField:new{t='UINT32', n='flags', d="status of NeuroMotive"},
+        PktField:new{t='UINT32', n='value'},
+        PktField:new{t='UINT32', n='opt', len=cbConst.cbLEN_STR_LABEL/4},
+    }
+)
+CbPktNM.fields['type'].valuestring = {
+    [0x32] = "NeuroMotive Report cbPKTTYPE_NMREP",
+    [0xB2] = "NeuroMotive Request cbPKTTYPE_NMSET",
+}
+
+
 -- cbPKT_SS_DETECT
 CbPktSSDetect = CbPktConfig:new('cbPKT_SS_DETECT',
     {
@@ -812,7 +898,30 @@ function CbPktGroup:match(chid, type)
     return chid == 0x0000
 end
 
+-- Spike packets
+CbPktNev = CbPkt:new('nevPKT_GENERIC',
+    {
+        PktField:new{t='INT16', n='data', lf='dlen', lfactor=2},
+    }
+)
+CbPktNev.fields['type'].d='Packet Type'
+CbPktNev.fields['type'].format='DEC'
+function CbPktNev:match(chid, type)
+    return chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT
+end
 
+-- DigIn packets
+CbPktNevDigIn = CbPkt:new('nevPKT_DIGIN',
+    {
+        PktField:new{t='UINT32', n='data', lf='dlen', format='HEX_DEC'},
+    }
+)
+CbPktNevDigIn.fields['type'].d='Packet Type'
+CbPktNevDigIn.fields['type'].format='DEC'
+function CbPktNevDigIn:match(chid, type)
+    info(cbConst.cbFIRST_DIGIN_CHAN)
+    return (cbConst.cbFIRST_DIGIN_CHAN < chid) and (chid <= cbConst.cbFIRST_DIGIN_CHAN+cbConst.cbNUM_DIGIN_CHANS)
+end
 
 -- Now we define something that will make our protocol
 
