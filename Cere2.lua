@@ -131,6 +131,7 @@ PktField = AField:new{
         UINT32=4,
         INT32=4,
         FLOAT=4,
+        DOUBLE=8,
         STRING=1,
     },
     _data_rng_getter={
@@ -141,6 +142,7 @@ PktField = AField:new{
         UINT32='le_uint',
         INT32='le_int',
         FLOAT='le_float',
+        DOUBLE='le_float',
     }
 }
 function PktField:dataWidth()
@@ -245,10 +247,20 @@ function CbPkt:iterate(b_len)
 end
 
 -- Subclass for config packets. They all share that
--- chid == 0x8000 and 'type' corresponds to
+-- chid == 0x8000 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
 CbPktConfig = CbPkt:new('')
 function CbPktConfig:match(chid, type)
     return chid == self._conf_pkg_ch and
+        self.fields['type'].valuestring ~= nil and
+        self.fields['type'].valuestring[type] ~= nil
+end
+
+-- Subclass for preview stream packets. They all share that
+-- (chid & 0x8000) == 0x8000 and (chid&0x0FFF) > 0 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
+CbPktPrevStreamBase = CbPkt:new('')
+function CbPktPrevStreamBase:match(chid, type)
+    return bit32.band(chid, self._conf_pkg_ch) == self._conf_pkg_ch and
+        bit32.band(chid, bit32.bnot(self._conf_pkg_ch)) > 0 and
         self.fields['type'].valuestring ~= nil and
         self.fields['type'].valuestring[type] ~= nil
 end
@@ -264,6 +276,8 @@ CbPktGeneric = CbPkt:new('cbPKT_GENERIC',
 function CbPktGeneric:match(chid, type)
     return true
 end
+
+-- Config packets (chid == 0x8000)
 
 -- System heartbeat
 CbPktSysHeartbeat = CbPktConfig:new('cbPKT_SYSHEARTBEAT')
@@ -557,43 +571,213 @@ CbPktSSStatus.fields['type'].valuestring = {
 
 
 -- Sample Group Information packets
-CbPktGroupInof = CbPktConfig:new('cbPKT_GROUPINFO',
+CbPktGroupInfo = CbPktConfig:new('cbPKT_GROUPINFO',
     {
         PktField:new{t='UINT32', n='proc',format='DEC'},
         PktField:new{t='UINT32', n='group',format='DEC'},
         PktField:new{t='STRING', n='label', len=cbConst.cbLEN_STR_LABEL},
         PktField:new{t='UINT32', n='period', d='Sampling Period', format='DEC'},
         PktField:new{t='UINT32', n='length', format='DEC'},
-        PktField:new{t='UINT32', n='list', lf='length', 'channelList'},
+        PktField:new{t='UINT32', n='list', lf='length', d='channelList'},
     }
 )
-CbPktGroupInof.fields['type'].valuestring = {
+CbPktGroupInfo.fields['type'].valuestring = {
     [0x30] = "Sample Group Report cbPKTTYPE_GROUPREP",
     [0xB0] = "Sample Group Request cbPKTTYPE_GROUPSET",
 }
 
+-- Processor Information packets
+CbPktProcInfo = CbPktConfig:new('cbPKT_PROCINFO',
+    {
+        PktField:new{t='UINT32', n='proc',format='DEC'},
+        PktField:new{t='UINT32', n='idcode', format='DEC_HEX', d='Manufacturer ID'},
+        PktField:new{t='STRING', n='ident', len=cbConst.cbLEN_STR_IDENT},
+        PktField:new{t='UINT32', n='chanbase',format='DEC'},
+        PktField:new{t='UINT32', n='chancount',format='DEC'},
+        PktField:new{t='UINT32', n='bankcount',format='DEC'},
+        PktField:new{t='UINT32', n='groupcount',format='DEC'},
+        PktField:new{t='UINT32', n='filtcount',format='DEC'},
+        PktField:new{t='UINT32', n='sortcount',format='DEC'},
+        PktField:new{t='UINT32', n='unitcount',format='DEC'},
+        PktField:new{t='UINT32', n='hoopcount',format='DEC'},
+        PktField:new{t='UINT32', n='sortmethod',format='DEC', valuestring={[0]='manual', [1]='auto'}},
+        PktField:new{t='UINT32', n='version',format='DEC'},
+    }
+)
+CbPktProcInfo.fields['type'].valuestring = {
+    [0x21] = "Proc Report cbPKTTYPE_PROCREP",
+}
+
+-- Bank Information packets
+CbPktBankInfo = CbPktConfig:new('cbPKT_BANKINFO',
+    {
+        PktField:new{t='UINT32', n='proc',format='DEC'},
+        PktField:new{t='UINT32', n='bank',format='DEC'},
+        PktField:new{t='UINT32', n='idcode', format='DEC_HEX', d='Manufacturer ID'},
+        PktField:new{t='STRING', n='ident', len=cbConst.cbLEN_STR_IDENT},
+        PktField:new{t='STRING', n='label', len=cbConst.cbLEN_STR_LABEL},
+        PktField:new{t='UINT32', n='chanbase',format='DEC'},
+        PktField:new{t='UINT32', n='chancount',format='DEC'},
+    }
+)
+CbPktBankInfo.fields['type'].valuestring = {
+    [0x22] = "Bank Report cbPKTTYPE_BANKREP",
+}
+
+-- Filter (FILT) Information packets
+CbPktFiltInfo = CbPktConfig:new('cbPKT_FILTINFO',
+    {
+        PktField:new{t='UINT32', n='proc',format='DEC'},
+        PktField:new{t='UINT32', n='filt',format='DEC'},
+        PktField:new{t='STRING', n='label', len=cbConst.cbLEN_STR_FILT_LABEL},
+        AField:new{n='hp', d='High-pass filter'},
+        PktField:new{t='UINT32', n='hp.hpfreq', d='Corner freq in mHz', format='DEC'},
+        PktField:new{t='UINT32', n='hp.hporder', d='Filter order', format='DEC'},
+        PktField:new{t='UINT32', n='hp.hptype', d='Filter type', format='HEX'},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.physical', format=32, mask=0x00000001, d='Physical cbFILTTYPE_PHYSICAL', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.digital', format=32, mask=0x00000002, d='Digital cbFILTTYPE_DIGITAL', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.adaptive', format=32, mask=0x00000004, d='Adaptive cbFILTTYPE_ADAPTIVE', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.nonlinear', format=32, mask=0x00000008, d='Nonlinear cbFILTTYPE_NONLINEAR', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.butter', format=32, mask=0x00000100, d='Butterworth cbFILTTYPE_BUTTERWORTH', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.cheb', format=32, mask=0x00000200, d='Chebychev cbFILTTYPE_CHEBYCHEV', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.bessel', format=32, mask=0x00000400, d='Bessel cbFILTTYPE_BESSEL', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='hp.hptype.elliptical', format=32, mask=0x00000800, d='Elliptical cbFILTTYPE_ELLIPTICAL', valuestring={'yes','no'}},
 
 
+        AField:new{n='lp', d='Low-pass filter'},
+        PktField:new{t='UINT32', n='lp.lpfreq', d='Corner freq in mHz', format='DEC'},
+        PktField:new{t='UINT32', n='lp.lporder', d='Filter order', format='DEC'},
+        PktField:new{t='UINT32', n='lp.lptype', d='Filter type', format='HEX'},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.physical', format=32, mask=0x00000001, d='Physical cbFILTTYPE_PHYSICAL', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.digital', format=32, mask=0x00000002, d='Digital cbFILTTYPE_DIGITAL', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.adaptive', format=32, mask=0x00000004, d='Adaptive cbFILTTYPE_ADAPTIVE', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.nonlinear', format=32, mask=0x00000008, d='Nonlinear cbFILTTYPE_NONLINEAR', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.butter', format=32, mask=0x00000100, d='Butterworth cbFILTTYPE_BUTTERWORTH', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.cheb', format=32, mask=0x00000200, d='Chebychev cbFILTTYPE_CHEBYCHEV', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.bessel', format=32, mask=0x00000400, d='Bessel cbFILTTYPE_BESSEL', valuestring={'yes','no'}},
+        FlagField:new{t='BOOLEAN', n='lp.lptype.elliptical', format=32, mask=0x00000800, d='Elliptical cbFILTTYPE_ELLIPTICAL', valuestring={'yes','no'}},
 
--- enum ADAPT_TYPE { ADAPT_NEVER, ADAPT_ALWAYS, ADAPT_TIMED };
--- typedef struct {
---     UINT32 nMode;           // 0-do not adapt at all, 1-always adapt, 2-adapt if timer not timed out
---     float fTimeOutMinutes;  // how many minutes until time out
---     float fElapsedMinutes;  // the amount of time that has elapsed
---
--- #ifdef __cplusplus
---     void set(ADAPT_TYPE nMode, float fTimeOutMinutes)
---     {
---         this->nMode = static_cast<UINT32>(nMode);
---         this->fTimeOutMinutes = fTimeOutMinutes;
---     }
--- #endif
---
--- } cbAdaptControl;
+
+        PktField:new{t='DOUBLE', n='sos1a1'},
+        PktField:new{t='DOUBLE', n='sos1a2'},
+        PktField:new{t='DOUBLE', n='sos1b1'},
+        PktField:new{t='DOUBLE', n='sos1b2'},
+        PktField:new{t='DOUBLE', n='sos2a1'},
+        PktField:new{t='DOUBLE', n='sos2a2'},
+        PktField:new{t='DOUBLE', n='sos2b1'},
+        PktField:new{t='DOUBLE', n='sos2b2'},
+        PktField:new{t='DOUBLE', n='sos1a1'},
+    }
+)
+CbPktFiltInfo.fields['type'].valuestring = {
+    [0x23] = "Filter Report cbPKTTYPE_FILTREP",
+    [0xA3] = "Filter Request cbPKTTYPE_FILTSET",
+}
+
+-- cbPKT_ADAPTFILTINFO
+CbPktAdaptFiltInfo = CbPktConfig:new('cbPKT_ADAPTFILTINFO',
+    {
+        PktField:new{t='UINT32', n='chan', d="Chan (Ignored)"},
+        PktField:new{t='UINT32', n='nMode', valuestring=
+            {
+                [0]="disabled",
+                [1]="filter continuous & spikes",
+                [2]="filter spikes",
+            }
+        },
+
+        PktField:new{t='FLOAT', n='dLearningRate'},
+        PktField:new{t='UINT32', n='refChan1', d="Reference Channel 1"},
+        PktField:new{t='UINT32', n='refChan2', d="Reference Channel 2"},
+    }
+)
+CbPktAdaptFiltInfo.fields['type'].valuestring = {
+    [0x25] = "Adaptive filtering Report cbPKTTYPE_ADAPTFILTREP",
+    [0xA5] = "Adaptive filtering Request cbPKTTYPE_ADAPTFILTSET",
+}
+
+-- cbPKT_REFELECFILTINFO
+CbPktRefElecFiltInfo = CbPktConfig:new('cbPKT_REFELECFILTINFO',
+    {
+        PktField:new{t='UINT32', n='chan', d="Chan (Ignored)"},
+        PktField:new{t='UINT32', n='nMode', valuestring=
+            {
+                [0]="disabled",
+                [1]="filter continuous & spikes",
+                [2]="filter spikes",
+            }
+        },
+        PktField:new{t='UINT32', n='refChan', d="Reference Channel"},
+    }
+)
+CbPktRefElecFiltInfo.fields['type'].valuestring = {
+    [0x26] = "Reference Electrode filtering Report cbPKTTYPE_REFELECFILTREP",
+    [0xA6] = "Reference Electrode filtering Request cbPKTTYPE_REFELECFILTSET",
+}
+
+-- cbPKT_LNC
+CbPktLNC = CbPktConfig:new('cbPKT_LNC',
+    {
+        PktField:new{t='UINT32', n='lncFreq', d="Nominal line noise frequency to be canceled  (in Hz)"},
+        PktField:new{t='UINT32', n='lncRefChan', d="Reference channel for lnc synch (1-based)"},
+        PktField:new{t='UINT32', n='lncGlobalMode', d="reserved"},
+    }
+)
+CbPktLNC.fields['type'].valuestring = {
+    [0x28] = "Line Noise Cancellation Report cbPKTTYPE_LNCREP",
+    [0xA8] = "Line Noise Cancellation Request cbPKTTYPE_LNCSET",
+}
+
+
+-- cbPKT_SS_DETECT
+CbPktSSDetect = CbPktConfig:new('cbPKT_SS_DETECT',
+    {
+        PktField:new{t='FLOAT', n='fThreshold'},
+        PktField:new{t='FLOAT', n='fMultiplier'},
+    }
+)
+CbPktSSDetect.fields['type'].valuestring = {
+    [0x52] = "SS Detect Report cbPKTTYPE_SS_DETECTREP",
+    [0xD2] = "SS Detect Request cbPKTTYPE_SS_DETECTSET",
+}
+
+-- cbPKT_SS_ARTIF_REJECT
+CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
+    {
+        PktField:new{t='UINT32', n='nMaxSimulChans', d="How many channels can fire exactly at the same time?"},
+        PktField:new{t='UINT32', n='nRefractoryCount', d="For how many samples (30 kHz) is a neuron refractory, so can't re-trigger"},
+    }
+)
+CbPktSSArtifReject.fields['type'].valuestring = {
+    [0x53] = "Artifact Rejection Report cbPKTTYPE_SS_ARTIF_REJECTREP",
+    [0xD3] = "Artifact Rejection Request cbPKTTYPE_SS_ARTIF_REJECTSET",
+}
+
+
+-- Preview streams
+-- Configuration
+CbPktPrevStreamCfg = CbPktPrevStreamBase:new('prevStreamCfg')
+CbPktPrevStreamCfg.fields['type'].valuestring = {
+    [0x03] = "Cfg Prev Stream Response cbPKTTYPE_PREVREP",
+    [0x81] = "Cfg Prev Stream Request cbPKTTYPE_PREVSETLNC",
+    [0x82] = "Cfg Prev Stream Request cbPKTTYPE_PREVSETSTREAM",
+    [0x83] = "Cfg Prev Stream Request cbPKTTYPE_PREVSET",
+}
+
+--  Line Noise Cancellation waveform preview
+CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
+    {
+        PktField:new{t='UINT32', n='freq', format='DEC', d='Estimated line noise frequency in mHz'},
+        PktField:new{t='INT16', n='wave', len=300},
+    }
+)
+CbPktLNCPrev.fields['type'].valuestring = {
+    [0x01] = "LNC Prev Stream cbPKTTYPE_PREVREPLNC",
+}
 
 
 -- Preview Stream
-CbPktStreamPrev = CbPkt:new('cbPKT_STREAMPREV',
+CbPktStreamPrev = CbPktPrevStreamBase:new('cbPKT_STREAMPREV',
     {
         PktField:new{t='INT16', n='rawmin', format='DEC'},
         PktField:new{t='INT16', n='rawmax'},
@@ -611,17 +795,26 @@ CbPktStreamPrev = CbPkt:new('cbPKT_STREAMPREV',
         PktField:new{t='UINT32', n='nFlags'},
     }
 )
-function CbPktStreamPrev:match(chid, type)
-    local p_types = {
-        -- [0x81] = true,
-        -- [0x82] = true,
-        -- [0x83] = true,
-        -- [0x03] = true,
-        -- [0x01] = true,
-        [0x02] = true,
+CbPktStreamPrev.fields['type'].valuestring = {
+    [0x02] = "Prev Stream cbPKTTYPE_PREVREPSTREAM",
+}
+
+-- Data packets (chid < 0x8000)
+-- Sample Group packets
+CbPktGroup = CbPkt:new('cbPKT_GROUP',
+    {
+        PktField:new{t='INT16', n='data', lf='dlen', lfactor=2},
     }
-    return bit32.band(chid, 0x8FFF) > self._conf_pkg_ch and p_types[type] ~= nil
+)
+CbPktGroup.fields['type'].d='Sample Group ID (1-127)'
+CbPktGroup.fields['type'].format='DEC'
+function CbPktGroup:match(chid, type)
+    return chid == 0x0000
 end
+
+
+
+-- Now we define something that will make our protocol
 
 ProtoMaker = klass:new{
     name='Cerebus',
