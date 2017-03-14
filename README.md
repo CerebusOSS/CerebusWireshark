@@ -21,5 +21,8 @@ and
 
     -- Packet definitions end here.
 
+## Version
+Release 1.0 2017-03-14: First working release.
+
 ## License
 The dissector is licensed under the GPLv3. See `LICENSE`.
