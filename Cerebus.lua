@@ -10,7 +10,7 @@ info("Loading cb protocol ...")
 
 -- implementation of a simple stack (Lifted from http://lua-users.org/wiki/SimpleStack)
 -- and extended
-Stack = {}
+local Stack = {}
 
 -- Create a Table with stack functions
 function Stack:Create(default_element)
@@ -121,7 +121,7 @@ cbConst.cbMAX_PNTS            = 128
 
 
 -- base of our rudimentary class system
-klass = {}
+local klass = {}
 function klass:new (o)
   o = o or {}
   setmetatable(o, self)
@@ -129,14 +129,14 @@ function klass:new (o)
   return o
 end
 
-AField = klass:new{
+local AField = klass:new{
     n='name',
     d=nil,
     ftype='afield',
 }
 
 
-PktField = AField:new{
+local PktField = AField:new{
     ftype='pktfield',
     t='UINT8',
     lf=nil,
@@ -176,14 +176,14 @@ function PktField:rangeGetter()
     return self._data_rng_getter[self.t]
 end
 
-FlagField = AField:new{
+local FlagField = AField:new{
     mask=0x00,
     valuestring=nil,
     ftype='flagfield',
 }
 
 -- All Packets derive from CbPkt, which defines the packet header
-CbPkt = klass:new{
+local CbPkt = klass:new{
     name='HEADER',
     fields={
         PktField:new{t='UINT32', n='time', d='Timestamp in tics'},
@@ -192,7 +192,7 @@ CbPkt = klass:new{
         PktField:new{t='UINT8', n='dlen', d='Packet Data Length (in quadlets)'}
     },
     dfields={},
-    pkttypes={},
+    pkttypes= setmetatable({}, {__mode="v"}),
     _conf_pkg_ch=0x8000
 }
 function CbPkt:new(name, addfields)
@@ -270,7 +270,7 @@ end
 
 -- Subclass for config packets. They all share that
 -- chid == 0x8000 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
-CbPktConfig = CbPkt:new('')
+local CbPktConfig = CbPkt:new('')
 function CbPktConfig:match(chid, type)
     return chid == self._conf_pkg_ch and
         self.fields['type'].valuestring ~= nil and
@@ -279,7 +279,7 @@ end
 
 -- Subclass for preview stream packets. They all share that
 -- (chid & 0x8000) == 0x8000 and (chid&0x0FFF) > 0 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
-CbPktPrevStreamBase = CbPkt:new('')
+local CbPktPrevStreamBase = CbPkt:new('')
 function CbPktPrevStreamBase:match(chid, type)
     return bit32.band(chid, self._conf_pkg_ch) == self._conf_pkg_ch and
         bit32.band(chid, bit32.bnot(self._conf_pkg_ch)) > 0 and
@@ -291,7 +291,7 @@ end
 
 -- Generic packets
 
-CbPktGeneric = CbPkt:new('cbPKT_GENERIC',
+local CbPktGeneric = CbPkt:new('cbPKT_GENERIC',
     {
         PktField:new{t='BYTES', n='data', lf='dlen', lfactor=4},
     }
@@ -303,13 +303,13 @@ end
 -- Config packets (chid == 0x8000)
 
 -- System heartbeat
-CbPktSysHeartbeat = CbPktConfig:new('cbPKT_SYSHEARTBEAT')
+local CbPktSysHeartbeat = CbPktConfig:new('cbPKT_SYSHEARTBEAT')
 CbPktSysHeartbeat.fields['type'].valuestring = {
     [0x00] = "System Heartbeat cbPKTTYPE_SYSHEARTBEAT",
 }
 
 -- System protocol monitor
-CbPktSysProtocolMonitor = CbPktConfig:new('cbPKT_SYSPROTOCOLMONITOR',
+local CbPktSysProtocolMonitor = CbPktConfig:new('cbPKT_SYSPROTOCOLMONITOR',
     {
         PktField:new{t='UINT32', n='sentpkts', d='Packets sent since last cbPKT_SYSPROTOCOLMONITOR (or 0 if timestamp=0)'},
     }
@@ -319,7 +319,7 @@ CbPktSysProtocolMonitor.fields['type'].valuestring = {
 }
 
 -- System condition report packet
-CbPktSysInfo = CbPktConfig:new('cbPKT_SYSINFO',
+local CbPktSysInfo = CbPktConfig:new('cbPKT_SYSINFO',
     {
         PktField:new{t='UINT32', n='sysfreq', d='System clock frequency in Hz', format='DEC'},
         PktField:new{t='UINT32', n='spikelen', d='The length of the spike events', format='DEC'},
@@ -339,7 +339,7 @@ CbPktSysInfo.fields['type'].valuestring = {
 }
 
 -- System condition report packet
-CbPktSSModelSet = CbPktConfig:new('cbPKT_SS_MODELSET',
+local CbPktSSModelSet = CbPktConfig:new('cbPKT_SS_MODELSET',
     {
         PktField:new{t='UINT32', n='chan', d='Channel being configured (zero-based)', format='DEC'},
         PktField:new{t='UINT32', n='unit_number', d='unit number (0 = noise)', format='DEC'},
@@ -364,7 +364,7 @@ CbPktSSModelSet.fields['type'].valuestring = {
 }
 
 -- NTrode Information Packets
-CbPktNTrodeInfo = CbPktConfig:new('cbPKT_NTRODEINFO',
+local CbPktNTrodeInfo = CbPktConfig:new('cbPKT_NTRODEINFO',
     {
         PktField:new{t='UINT32', n='ntrode', d='nTrode being configured (1-based)', format='DEC'},
         PktField:new{t='STRING', n='label', d='nTrode label', len=cbConst.cbLEN_STR_LABEL},
@@ -389,7 +389,7 @@ CbPktNTrodeInfo.fields['type'].valuestring = {
 }
 
 -- Channel Information Packets
-CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
+local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
     {
         PktField:new{t='UINT32', n='chan', d='channel being configured', format='DEC'},
         PktField:new{t='UINT32', n='proc', d='address of the processor', format='DEC'},
@@ -478,7 +478,7 @@ CbPktChanInfo.fields['type'].valuestring = {
 }
 
 -- File Config Information Packets
-CbPktFileCfg = CbPktConfig:new('cbPKT_FILECFG',
+local CbPktFileCfg = CbPktConfig:new('cbPKT_FILECFG',
     {
         PktField:new{t='UINT32', n='options', d='File Config Option', format='HEX', valuestring={
             [0x00]="Launch File dialog, set file info, start or stop recording cbFILECFG_OPT_NONE",
@@ -507,14 +507,14 @@ CbPktFileCfg.fields['type'].valuestring = {
 }
 
 -- Config All packet
-CbPktConfigAll = CbPktConfig:new('cbPKT_CONFIGALL')
+local CbPktConfigAll = CbPktConfig:new('cbPKT_CONFIGALL')
 CbPktConfigAll.fields['type'].valuestring = {
     [0x08] = "Config All Report cbPKTTYPE_REPCONFIGALL",
     [0x88] = "Config All Request cbPKTTYPE_REQCONFIGALL",
 }
 
 -- Options for noise boundary packets
-CbPktSSNoiseBoundary = CbPktConfig:new('cbPKT_SS_NOISE_BOUNDARY',
+local CbPktSSNoiseBoundary = CbPktConfig:new('cbPKT_SS_NOISE_BOUNDARY',
     {
         PktField:new{t='UINT32', n='chan', d='channel being configured', format='DEC'},
         PktField:new{t='FLOAT', n='afc', len=3, d='Center of ellipsoid'},
@@ -527,7 +527,7 @@ CbPktSSNoiseBoundary.fields['type'].valuestring = {
 }
 
 -- SS Statistics packets
-CbPktSSStatistics = CbPktConfig:new('cbPKT_SS_STATISTICS',
+local CbPktSSStatistics = CbPktConfig:new('cbPKT_SS_STATISTICS',
     {
         PktField:new{t='UINT32', n='nUpdateSpikes', d='update rate in spike counts', format='DEC'},
         PktField:new{t='UINT32', n='nAutoalg', d='Sorting Algorithm', format='HEX', valuestring={
@@ -567,7 +567,7 @@ CbPktSSStatistics.fields['type'].valuestring = {
 
 
 -- SS Status packets
-CbPktSSStatus = CbPktConfig:new('cbPKT_SS_STATUS',
+local CbPktSSStatus = CbPktConfig:new('cbPKT_SS_STATUS',
     {
         AField:new{n='cntlUnitStats'},
         PktField:new{t='UINT32', n='cntlUnitStats.nMode', d='nMode', format='HEX', valuestring={
@@ -593,7 +593,7 @@ CbPktSSStatus.fields['type'].valuestring = {
 }
 
 -- SS Recalc packets
-CbPktSSRecalc = CbPktConfig:new('cbPKT_SS_RECALC',
+local CbPktSSRecalc = CbPktConfig:new('cbPKT_SS_RECALC',
     {
 
         PktField:new{t='UINT32', n='chan',format='DEC', d="Channel (1-based). If 0, perform for all"},
@@ -614,7 +614,7 @@ CbPktSSRecalc.fields['type'].valuestring = {
 }
 
 -- Feature Space Basis Packets
-CbPktFSBasis = CbPktConfig:new('cbPKT_FS_BASIS',
+local CbPktFSBasis = CbPktConfig:new('cbPKT_FS_BASIS',
     {
 
         PktField:new{t='UINT32', n='chan',format='DEC', d="Channel (1-based)"},
@@ -641,7 +641,7 @@ CbPktFSBasis.fields['type'].valuestring = {
 
 
 -- Sample Group Information packets
-CbPktGroupInfo = CbPktConfig:new('cbPKT_GROUPINFO',
+local CbPktGroupInfo = CbPktConfig:new('cbPKT_GROUPINFO',
     {
         PktField:new{t='UINT32', n='proc',format='DEC'},
         PktField:new{t='UINT32', n='group',format='DEC'},
@@ -657,7 +657,7 @@ CbPktGroupInfo.fields['type'].valuestring = {
 }
 
 -- Processor Information packets
-CbPktProcInfo = CbPktConfig:new('cbPKT_PROCINFO',
+local CbPktProcInfo = CbPktConfig:new('cbPKT_PROCINFO',
     {
         PktField:new{t='UINT32', n='proc',format='DEC'},
         PktField:new{t='UINT32', n='idcode', format='DEC_HEX', d='Manufacturer ID'},
@@ -679,7 +679,7 @@ CbPktProcInfo.fields['type'].valuestring = {
 }
 
 -- Bank Information packets
-CbPktBankInfo = CbPktConfig:new('cbPKT_BANKINFO',
+local CbPktBankInfo = CbPktConfig:new('cbPKT_BANKINFO',
     {
         PktField:new{t='UINT32', n='proc',format='DEC'},
         PktField:new{t='UINT32', n='bank',format='DEC'},
@@ -695,7 +695,7 @@ CbPktBankInfo.fields['type'].valuestring = {
 }
 
 -- Filter (FILT) Information packets
-CbPktFiltInfo = CbPktConfig:new('cbPKT_FILTINFO',
+local CbPktFiltInfo = CbPktConfig:new('cbPKT_FILTINFO',
     {
         PktField:new{t='UINT32', n='proc',format='DEC'},
         PktField:new{t='UINT32', n='filt',format='DEC'},
@@ -745,7 +745,7 @@ CbPktFiltInfo.fields['type'].valuestring = {
 }
 
 -- cbPKT_ADAPTFILTINFO
-CbPktAdaptFiltInfo = CbPktConfig:new('cbPKT_ADAPTFILTINFO',
+local CbPktAdaptFiltInfo = CbPktConfig:new('cbPKT_ADAPTFILTINFO',
     {
         PktField:new{t='UINT32', n='chan', d="Chan (Ignored)"},
         PktField:new{t='UINT32', n='nMode', valuestring=
@@ -767,7 +767,7 @@ CbPktAdaptFiltInfo.fields['type'].valuestring = {
 }
 
 -- cbPKT_REFELECFILTINFO
-CbPktRefElecFiltInfo = CbPktConfig:new('cbPKT_REFELECFILTINFO',
+local CbPktRefElecFiltInfo = CbPktConfig:new('cbPKT_REFELECFILTINFO',
     {
         PktField:new{t='UINT32', n='chan', d="Chan (Ignored)"},
         PktField:new{t='UINT32', n='nMode', valuestring=
@@ -786,7 +786,7 @@ CbPktRefElecFiltInfo.fields['type'].valuestring = {
 }
 
 -- cbPKT_LNC
-CbPktLNC = CbPktConfig:new('cbPKT_LNC',
+local CbPktLNC = CbPktConfig:new('cbPKT_LNC',
     {
         PktField:new{t='UINT32', n='lncFreq', d="Nominal line noise frequency to be canceled  (in Hz)"},
         PktField:new{t='UINT32', n='lncRefChan', d="Reference channel for lnc synch (1-based)"},
@@ -800,7 +800,7 @@ CbPktLNC.fields['type'].valuestring = {
 
 
 -- cbPKT_NM
-CbPktNM = CbPktConfig:new('cbPKT_NM',
+local CbPktNM = CbPktConfig:new('cbPKT_NM',
     {
         PktField:new{t='UINT32', n='mode', valuestring=
             {
@@ -826,7 +826,7 @@ CbPktNM.fields['type'].valuestring = {
 
 
 -- cbPKT_SS_DETECT
-CbPktSSDetect = CbPktConfig:new('cbPKT_SS_DETECT',
+local CbPktSSDetect = CbPktConfig:new('cbPKT_SS_DETECT',
     {
         PktField:new{t='FLOAT', n='fThreshold'},
         PktField:new{t='FLOAT', n='fMultiplier'},
@@ -838,7 +838,7 @@ CbPktSSDetect.fields['type'].valuestring = {
 }
 
 -- cbPKT_SS_ARTIF_REJECT
-CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
+local CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
     {
         PktField:new{t='UINT32', n='nMaxSimulChans', d="How many channels can fire exactly at the same time?"},
         PktField:new{t='UINT32', n='nRefractoryCount', d="For how many samples (30 kHz) is a neuron refractory, so can't re-trigger"},
@@ -852,7 +852,7 @@ CbPktSSArtifReject.fields['type'].valuestring = {
 
 -- Preview streams
 -- Configuration
-CbPktPrevStreamCfg = CbPktPrevStreamBase:new('prevStreamCfg')
+local CbPktPrevStreamCfg = CbPktPrevStreamBase:new('prevStreamCfg')
 CbPktPrevStreamCfg.fields['type'].valuestring = {
     [0x03] = "Cfg Prev Stream Response cbPKTTYPE_PREVREP",
     [0x81] = "Cfg Prev Stream Request cbPKTTYPE_PREVSETLNC",
@@ -861,7 +861,7 @@ CbPktPrevStreamCfg.fields['type'].valuestring = {
 }
 
 --  Line Noise Cancellation waveform preview
-CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
+local CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
     {
         PktField:new{t='UINT32', n='freq', format='DEC', d='Estimated line noise frequency in mHz'},
         PktField:new{t='INT16', n='wave', len=300},
@@ -873,7 +873,7 @@ CbPktLNCPrev.fields['type'].valuestring = {
 
 
 -- Preview Stream
-CbPktStreamPrev = CbPktPrevStreamBase:new('cbPKT_STREAMPREV',
+local CbPktStreamPrev = CbPktPrevStreamBase:new('cbPKT_STREAMPREV',
     {
         PktField:new{t='INT16', n='rawmin', format='DEC'},
         PktField:new{t='INT16', n='rawmax'},
@@ -897,7 +897,7 @@ CbPktStreamPrev.fields['type'].valuestring = {
 
 -- Data packets (chid < 0x8000)
 -- Sample Group packets
-CbPktGroup = CbPkt:new('cbPKT_GROUP',
+local CbPktGroup = CbPkt:new('cbPKT_GROUP',
     {
         PktField:new{t='INT16', n='data', lf='dlen', lfactor=2},
     }
@@ -909,7 +909,7 @@ function CbPktGroup:match(chid, type)
 end
 
 -- Spike packets
-CbPktNev = CbPkt:new('nevPKT_GENERIC',
+local CbPktNev = CbPkt:new('nevPKT_GENERIC',
     {
         PktField:new{t='INT16', n='data', lf='dlen', lfactor=2},
     }
@@ -921,7 +921,7 @@ function CbPktNev:match(chid, type)
 end
 
 -- DigIn packets
-CbPktNevDigIn = CbPkt:new('nevPKT_DIGIN',
+local CbPktNevDigIn = CbPkt:new('nevPKT_DIGIN',
     {
         PktField:new{t='UINT32', n='data', lf='dlen', format='HEX_DEC'},
     }
@@ -938,7 +938,7 @@ end
 
 -- Now we define something that will make our protocol
 
-ProtoMaker = klass:new{
+local ProtoMaker = klass:new{
     name='Cerebus',
     desc="Cerebus NSP Communication",
     colname="Cerebus",
