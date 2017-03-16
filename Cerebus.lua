@@ -833,6 +833,48 @@ local CbPktNM = CbPktConfig:new('cbPKT_NM',
     }
 )
 
+-- cbPKT_AOUT_WAVEFORM Analog output packets
+local CbPktAoutWaveform = CbPktConfig:new('cbPKT_AOUT_WAVEFORM',
+    {
+        PktField:new{t='UINT16', n='chan', d="Which analog output/audio output channel (1-based)"},
+
+        PktField:new{t='UINT16', n='mode', valuestring=
+            {
+                [0]="cbWAVEFORM_MODE_NONE Disabled",
+                [1]="cbWAVEFORM_MODE_PARAMETERS repeated sequence",
+                [2]="cbWAVEFORM_MODE_SINE sinusoid",
+            }
+        },
+        PktField:new{t='UINT32', n='repeats'},
+        PktField:new{t='UINT16', n='trig', valuestring=
+            {
+                [0]="cbWAVEFORM_TRIGGER_NONE instant software trigger",
+                [1]="cbWAVEFORM_TRIGGER_DINPREG digital input rising edge trigger",
+                [2]="cbWAVEFORM_TRIGGER_DINPFEG digital input falling edge trigger",
+                [3]="cbWAVEFORM_TRIGGER_SPIKEUNIT spike unit",
+                [4]="cbWAVEFORM_TRIGGER_COMMENTCOLOR comment RGBA color (A being big byte)",
+                [5]="cbWAVEFORM_TRIGGER_SOFTRESET soft-reset trigger",
+                [6]="cbWAVEFORM_TRIGGER_EXTENSION extension trigger",
+            }
+        },
+        PktField:new{t='UINT16', n='trigChan'},
+        PktField:new{t='UINT16', n='trigValue'},
+        PktField:new{t='UINT8', n='active'},
+
+        AField:new{n='waveform'},
+        PktField:new{t='INT16', n='waveform.offset'},
+        PktField:new{t='UINT16', n='waveform.seq'},
+        PktField:new{t='UINT16', n='waveform.seqTotal'},
+        PktField:new{t='UINT16', n='waveform.phases'},
+        PktField:new{t='UINT16', n='waveform.duration', lf='waveform.phases'},
+        PktField:new{t='INT16', n='waveform.amplitude', lf='waveform.phases'},
+        _types={
+            [0x33] = "Analog Out Waveform Report cbPKTTYPE_WAVEFORMREP",
+            [0xB3] = "Analog Out Waveform Request cbPKTTYPE_WAVEFORMSET",
+        }
+    }
+)
+
 
 -- cbPKT_SS_DETECT
 local CbPktSSDetect = CbPktConfig:new('cbPKT_SS_DETECT',
