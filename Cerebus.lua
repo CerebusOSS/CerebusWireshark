@@ -753,6 +753,43 @@ local CbPktFiltInfo = CbPktConfig:new('cbPKT_FILTINFO',
     }
 )
 
+-- cbPKT_CHANRESET Factory Default settings request packet
+local CbPktChanReset = CbPktConfig:new('cbPKT_CHANRESET',
+    {
+        PktField:new{t='UINT32', n='chan', d="Channel"},
+        PktField:new{t='UINT8', n='label', d="Reset label", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='userflags', d="Reset User flags", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='position', d="Reset Reserved", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='scalin', d="Reset Scaling in", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='scalout', d="Reset Scaling out", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='doutopts', d="Reset dOut options", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='dinpopts', d="Reset dIn options", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='aoutopts', d="Reset aOut options", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='eopchar', d="Reset endOfPacket char", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='monsource', d="Reset monitor source", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='outvalue', d="Reset outValue", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='ainpopts', d="Reset aIn options", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='lncrate', d="Reset LNC rate", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='smpfilter', d="Reset filter id", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='smpgroup', d="Reset sample group", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='smpdispmin', d="Reset display min", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='smpdispmax', d="Reset display max", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkfilter', d="Reset spk filter", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkdispmax', d="Reset spk disp max", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='lncdispmax', d="Reset LNC disp max", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkopts', d="Reset spk options", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkthrlevel', d="Reset spk threshold lvl", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkthrlimit', d="Reset spk threshold limit", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkgroup', d="Reset spkgroup", valuestring={[0]='no', [1]='yes'}},
+        PktField:new{t='UINT8', n='spkhoops', d="Reset spkhoops", valuestring={[0]='no', [1]='yes'}},
+        _types={
+            [0x24] = "Factory Default settings Report cbPKTTYPE_CHANRESETREP",
+            [0xA4] = "Factory Default settings Request cbPKTTYPE_CHANRESET",
+        }
+    }
+)
+
+
 -- cbPKT_ADAPTFILTINFO
 local CbPktAdaptFiltInfo = CbPktConfig:new('cbPKT_ADAPTFILTINFO',
     {
