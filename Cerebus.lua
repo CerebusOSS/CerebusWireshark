@@ -419,7 +419,7 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='UINT32', n='ainpcaps', d='analog input capablities', format='HEX'},
         PktField:new{t='UINT32', n='spkcaps', d='spike capablities', format='HEX'},
 
-        AField:new{n='physcalin', d='physical channel scaling information'},
+        AField:new{n='physcalin', d='physical channel scaling information (in)'},
         PktField:new{t='INT16', n='physcalin.digmin', d='digital value that cooresponds with the anamin value'},
         PktField:new{t='INT16', n='physcalin.digmax', d='digital value that cooresponds with the anamax value'},
         PktField:new{t='INT32', n='physcalin.anamin', d='minimum analog value present in the signal'},
@@ -427,7 +427,7 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT32', n='physcalin.anagain', d='gain applied to the default analog values to get the analog values'},
         PktField:new{t='STRING', n='physcalin.anaunit', d='nTrode label', len=cbConst.cbLEN_STR_UNIT},
 
-        AField:new{n='phyfiltin', d='physical channel filter definition'},
+        AField:new{n='phyfiltin', d='physical channel filter definition (in)'},
         PktField:new{t='STRING', n='phyfiltin.label', d='filter label', len=cbConst.cbLEN_STR_FILT_LABEL},
         PktField:new{t='UINT32', n='phyfiltin.hpfreq', d='high-pass corner frequency in milliHertz'},
         PktField:new{t='UINT32', n='phyfiltin.hporder', d='high-pass filter order'},
@@ -436,7 +436,79 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='UINT32', n='phyfiltin.lporder', d='low-pass filter order'},
         PktField:new{t='UINT32', n='phyfiltin.lptype', d='low-pass filter type', format='HEX'},
 
-        -- PktField:new{t='STRING', n='label', d='nTrode label', len=cbConst.cbLEN_STR_LABEL},
+        AField:new{n='physcalout', d='physical channel scaling information (out)'},
+        PktField:new{t='INT16', n='physcalout.digmin', d='digital value that cooresponds with the anamin value'},
+        PktField:new{t='INT16', n='physcalout.digmax', d='digital value that cooresponds with the anamax value'},
+        PktField:new{t='INT32', n='physcalout.anamin', d='minimum analog value present in the signal'},
+        PktField:new{t='INT32', n='physcalout.anamax', d='maximum analog value present in the signal'},
+        PktField:new{t='INT32', n='physcalout.anagain', d='gain applied to the default analog values to get the analog values'},
+        PktField:new{t='STRING', n='physcalin.anaunit', d='nTrode label', len=cbConst.cbLEN_STR_UNIT},
+
+        AField:new{n='phyfiltout', d='physical channel filter definition (out)'},
+        PktField:new{t='STRING', n='phyfiltout.label', d='filter label', len=cbConst.cbLEN_STR_FILT_LABEL},
+        PktField:new{t='UINT32', n='phyfiltout.hpfreq', d='high-pass corner frequency in milliHertz'},
+        PktField:new{t='UINT32', n='phyfiltout.hporder', d='high-pass filter order'},
+        PktField:new{t='UINT32', n='phyfiltout.hptype', d='high-pass filter type', format='HEX'},
+        PktField:new{t='UINT32', n='phyfiltout.lpfreq', d='low-pass frequency in milliHertz'},
+        PktField:new{t='UINT32', n='phyfiltout.lporder', d='low-pass filter order'},
+        PktField:new{t='UINT32', n='phyfiltout.lptype', d='low-pass filter type', format='HEX'},
+
+        PktField:new{t='STRING', n='label', d='label', len=cbConst.cbLEN_STR_LABEL},
+        PktField:new{t='UINT32', n='userflags', format='HEX'},
+        PktField:new{t='INT32', n='position', len=4},
+
+        AField:new{n='scalin', d='scaling information (in)'},
+        PktField:new{t='INT16', n='scalin.digmin', d='digital value that cooresponds with the anamin value'},
+        PktField:new{t='INT16', n='scalin.digmax', d='digital value that cooresponds with the anamax value'},
+        PktField:new{t='INT32', n='scalin.anamin', d='minimum analog value present in the signal'},
+        PktField:new{t='INT32', n='scalin.anamax', d='maximum analog value present in the signal'},
+        PktField:new{t='INT32', n='scalin.anagain', d='gain applied to the default analog values to get the analog values'},
+        PktField:new{t='STRING', n='scalin.anaunit', d='nTrode label', len=cbConst.cbLEN_STR_UNIT},
+
+        AField:new{n='scalout', d='scaling information (out)'},
+        PktField:new{t='INT16', n='scalout.digmin', d='digital value that cooresponds with the anamin value'},
+        PktField:new{t='INT16', n='scalout.digmax', d='digital value that cooresponds with the anamax value'},
+        PktField:new{t='INT32', n='scalout.anamin', d='minimum analog value present in the signal'},
+        PktField:new{t='INT32', n='scalout.anamax', d='maximum analog value present in the signal'},
+        PktField:new{t='INT32', n='scalout.anagain', d='gain applied to the default analog values to get the analog values'},
+        PktField:new{t='STRING', n='scalout.anaunit', d='nTrode label', len=cbConst.cbLEN_STR_UNIT},
+
+        PktField:new{t='UINT32', n='doutopts', format='HEX'},
+        PktField:new{t='UINT32', n='dinpopts', format='HEX'},
+        PktField:new{t='UINT32', n='aoutopts', format='HEX'},
+        PktField:new{t='UINT32', n='eopchar', format='HEX'},
+        PktField:new{t='UINT32', n='monsource', format='HEX'},
+        PktField:new{t='INT32', n='outvalue'},
+
+        PktField:new{t='UINT8', n='trigtype'},
+        PktField:new{t='UINT16', n='trigchan'},
+        PktField:new{t='UINT16', n='trigval'},
+
+        PktField:new{t='UINT32', n='ainpopts'},
+        PktField:new{t='UINT32', n='lncrate'},
+
+        PktField:new{t='UINT32', n='smpfilter'},
+        PktField:new{t='UINT32', n='smpgroup'},
+
+        PktField:new{t='INT32', n='smpdispmin'},
+        PktField:new{t='INT32', n='smpdispmax'},
+
+        PktField:new{t='UINT32', n='spkfilter'},
+
+        PktField:new{t='INT32', n='spkdispmax'},
+        PktField:new{t='INT32', n='lncdispmax'},
+
+        PktField:new{t='UINT32', n='spkopts'},
+
+        PktField:new{t='INT32', n='spkthrlevel'},
+        PktField:new{t='INT32', n='spkthrlimit'},
+
+        PktField:new{t='UINT32', n='spkgroup'},
+
+        PktField:new{t='INT16', n='amplrejpos'},
+        PktField:new{t='INT16', n='amplrejneg'},
+        PktField:new{t='UINT32', n='refelecchan'},
+
         AField:new{n='placeholder', d='→ Other fields of this packet have not been implemented yet. ←'},
         -- typedef struct {
         --     INT16   digmin;     // digital value that cooresponds with the anamin value
@@ -756,6 +828,7 @@ local CbPktFiltInfo = CbPktConfig:new('cbPKT_FILTINFO',
 -- cbPKT_CHANRESET Factory Default settings request packet
 local CbPktChanReset = CbPktConfig:new('cbPKT_CHANRESET',
     {
+        AField:new{d="This packet is untested."},
         PktField:new{t='UINT32', n='chan', d="Channel"},
         PktField:new{t='UINT8', n='label', d="Reset label", valuestring={[0]='no', [1]='yes'}},
         PktField:new{t='UINT8', n='userflags', d="Reset User flags", valuestring={[0]='no', [1]='yes'}},
