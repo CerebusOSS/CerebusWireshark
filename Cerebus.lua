@@ -484,7 +484,20 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='UINT16', n='trigchan'},
         PktField:new{t='UINT16', n='trigval'},
 
-        PktField:new{t='UINT32', n='ainpopts'},
+        PktField:new{t='UINT32', n='ainpopts', format='HEX'},
+        FlagField:new{t='BOOLEAN', n='ainpopts.rawpreview', format=32, mask=0x00000001, d='cbAINP_RAWPREVIEW Generate scrolling preview data for the raw channel', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.lnc', format=32, mask=0x00000002, d='cbAINP_LNC Line Noise Cancellation', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.lncpreview', format=32, mask=0x00000004, d='cbAINP_LNCPREVIEW Retrieve the LNC correction waveform', valuestring={'yes', 'no'}},
+
+        FlagField:new{t='BOOLEAN', n='ainpopts.smpstream', format=32, mask=0x00000010, d='cbAINP_SMPSTREAM stream the analog input stream directly to disk', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.smpfilter', format=32, mask=0x00000020, d='cbAINP_SMPFILTER Digitally filter the analog input stream', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.rawtream', format=32, mask=0x00000040, d='cbAINP_RAWSTREAM Raw data stream available', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkstream', format=32, mask=0x00000100, d='cbAINP_SPKSTREAM Spike Stream is available', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkfilter', format=32, mask=0x00000200, d='cbAINP_SPKFILTER Selectable Filters', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkpreview', format=32, mask=0x00000400, d='cbAINP_SPKPREVIEW Generate scrolling preview of the spike channel', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkproc', format=32, mask=0x00000800, d='cbAINP_SPKPROC Channel is able to do online spike processing', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.offset_cor', format=32, mask=0x00001000, d='cbAINP_OFFSET_CORRECT_CAP Offset correction mode (0-disabled 1-enabled)', valuestring={'yes', 'no'}},
+
         PktField:new{t='UINT32', n='lncrate'},
 
         PktField:new{t='UINT32', n='smpfilter'},
