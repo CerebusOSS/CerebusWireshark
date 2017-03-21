@@ -344,7 +344,7 @@ local CbPktSysInfo = CbPktConfig:new('cbPKT_SYSINFO',
         PktField:new{t='UINT32', n='spikepre', d='Spike pre-trigger samples', format='DEC'},
         PktField:new{t='UINT32', n='resetque', d='The channel for the reset to que on', format='DEC'},
         PktField:new{t='UINT32', n='runlevel', d='System runlevel', format='DEC_HEX'},
-        PktField:new{t='UINT32', n='runflags', d='System clock frequency in Hz', format='HEX'},
+        PktField:new{t='UINT32', n='runflags', d='Run Flags', format='HEX'},
         _types={
             [0x10] = "System Condition Report cbPKTTYPE_SYSREP",
             [0x11] = "System Spike Length Report cbPKTTYPE_SYSREPSPKLEN",
