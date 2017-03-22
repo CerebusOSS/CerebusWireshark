@@ -297,6 +297,10 @@ function CbPkt:iterate(b_len)
     end
 end
 
+function CbPkt:makeInfoString()
+    return self.name
+end
+
 -- Subclass for config packets. They all share that
 -- chid == 0x8000 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
 local CbPktConfig = CbPkt:new('')
@@ -1082,6 +1086,10 @@ local CbPktGroup = CbPkt:new('cbPKT_GROUP',
 CbPktGroup.fields['type'].d='Sample Group ID (1-127)'
 CbPktGroup.fields['type'].format='DEC'
 
+function CbPktGroup:makeInfoString()
+    return self.name .. "(" .. self.dfields['type']()() .. ")"
+end
+
 -- Spike packets
 local CbPktNev = CbPkt:new('nevPKT_GENERIC',
     {
@@ -1142,15 +1150,16 @@ function ProtoMaker:register()
             -- get current
             local packet_len = buf_remain(7,1):uint() * 4 + header_len
 
-            if i == 0 then
-                pinfo.cols.info = packet.name
-            end
 
             local subtree = tree:add(self.proto, buf_remain(0, packet_len), "Cerebus Protocol Data (" .. packet.name .. ")" )
 
             self:addSubtreeForPkt(buf_remain(0, packet_len):tvb(), subtree, packet)
             buflen = buflen - packet_len
             buf_remain = buf_remain(packet_len):tvb()
+            if i == 0 then
+                pinfo.cols.info = packet:makeInfoString()
+            end
+
             i = i + 1
         end
         if i > 1 then
