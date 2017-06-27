@@ -4,7 +4,7 @@ In interacting with BlackRock's NSPs, the need arose to take a closer look at th
 NSPs communicate with host PCs over the UDP protocol. This is a simple Lua extension script for Wireshark,
 enabling disseciton of network packets.
 
-The dissector is based on `cbhwlib.h` as published as part of [CereLink](https://github.com/dashesy/CereLink). The current firmware version is `6.05.02` and may be incompatible with other versions.
+The dissector is based on `cbhwlib.h` (version 3.10) as published as part of [CereLink](https://github.com/dashesy/CereLink). The current firmware version is `6.05.02` and may be incompatible with other versions.
 
 A subset of commonly observed packets is supported, and not all of them at all detail.
 
@@ -21,8 +21,8 @@ and
 
     -- Packet definitions end here.
 
-## Version
-Release 1.0 2017-03-14: First working release.
-
+## Version History
+- Release 1.0 2017-03-14: First working release.
+- 1.1 2017-03-22 Add more channel info fields
 ## License
 The dissector is licensed under the GPLv3. See `LICENSE`.

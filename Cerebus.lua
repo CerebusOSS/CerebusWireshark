@@ -297,6 +297,10 @@ function CbPkt:iterate(b_len)
     end
 end
 
+function CbPkt:makeInfoString()
+    return self.name
+end
+
 -- Subclass for config packets. They all share that
 -- chid == 0x8000 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
 local CbPktConfig = CbPkt:new('')
@@ -331,7 +335,7 @@ local CbPktSysProtocolMonitor = CbPktConfig:new('cbPKT_SYSPROTOCOLMONITOR',
     {
         PktField:new{t='UINT32', n='sentpkts', d='Packets sent since last cbPKT_SYSPROTOCOLMONITOR (or 0 if timestamp=0)'},
         _types={
-            [0x01] = "System Protocol Monitor PAcket",
+            [0x01] = "System Protocol Monitor Packet",
         }
     }
 )
@@ -522,25 +526,8 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT16', n='amplrejneg'},
         PktField:new{t='UINT32', n='refelecchan'},
 
-        AField:new{n='placeholder', d='→ Other fields of this packet have not been implemented yet. ←'},
-        -- typedef struct {
-        --     INT16   digmin;     // digital value that cooresponds with the anamin value
-        --     INT16   digmax;     // digital value that cooresponds with the anamax value
-        --     INT32   anamin;     // the minimum analog value present in the signal
-        --     INT32   anamax;     // the maximum analog value present in the signal
-        --     INT32   anagain;    // the gain applied to the default analog values to get the analog values
-        --     char    anaunit[cbLEN_STR_UNIT]; // the unit for the analog signal (eg, "uV" or "MPa")
-        -- } cbSCALING;
+        AField:new{n='placeholder', d='→ Other fields [unitmapping, spkhoops] of this packet have not been implemented yet. ←'},
 
-        -- typedef struct {
-        --     char    label[cbLEN_STR_FILT_LABEL];
-        --     UINT32  hpfreq;     // high-pass corner frequency in milliHertz
-        --     UINT32  hporder;    // high-pass filter order
-        --     UINT32  hptype;     // high-pass filter type
-        --     UINT32  lpfreq;     // low-pass frequency in milliHertz
-        --     UINT32  lporder;    // low-pass filter order
-        --     UINT32  lptype;     // low-pass filter type
-        -- } cbFILTDESC;
         _types={
             [0x40] = "cbPKTTYPE_CHANREP",
             [0x41] = "cbPKTTYPE_CHANREPLABEL",
@@ -599,7 +586,7 @@ local CbPktFileCfg = CbPktConfig:new('cbPKT_FILECFG',
         PktField:new{t='UINT32', n='extctrl', d='If cbFILECFG_OPT_REC this is split number (0 for non-TOC). If cbFILECFG_OPT_STOP this is error code.', format='DEC_HEX'},
         PktField:new{t='STRING', n='username', len=256},
         PktField:new{t='STRING', n='filename', len=256},
-        PktField:new{t='STRING', n='comment', len=256},
+        PktField:new{t='STRING', n='comment', len=256, d='Comment or Datetime'},
         _types={
             [0x61] = "File Config response cbPKTTYPE_REPFILECFG",
             [0xE1] = "File Config request cbPKTTYPE_SETFILECFG",
@@ -1082,6 +1069,10 @@ local CbPktGroup = CbPkt:new('cbPKT_GROUP',
 CbPktGroup.fields['type'].d='Sample Group ID (1-127)'
 CbPktGroup.fields['type'].format='DEC'
 
+function CbPktGroup:makeInfoString()
+    return self.name .. "(" .. self.dfields['type']()() .. ")"
+end
+
 -- Spike packets
 local CbPktNev = CbPkt:new('nevPKT_GENERIC',
     {
@@ -1143,15 +1134,16 @@ function ProtoMaker:register()
             -- get current
             local packet_len = buf_remain(7,1):uint() * 4 + header_len
 
-            if i == 0 then
-                pinfo.cols.info = packet.name
-            end
 
             local subtree = tree:add(self.proto, buf_remain(0, packet_len), "Cerebus Protocol Data (" .. packet.name .. ")" )
 
             self:addSubtreeForPkt(buf_remain(0, packet_len):tvb(), subtree, packet)
             buflen = buflen - packet_len
             buf_remain = buf_remain(packet_len):tvb()
+            if i == 0 then
+                pinfo.cols.info = packet:makeInfoString()
+            end
+
             i = i + 1
         end
         if i > 1 then
