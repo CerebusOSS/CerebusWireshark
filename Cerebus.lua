@@ -1127,6 +1127,7 @@ function ProtoMaker:register()
         self:makeFieldsForPacket(p)
     end
 
+    local fe_interface_id_f = Field.new("frame.interface_id")
 
     function self.proto.dissector(buffer, pinfo, tree)
         pinfo.cols.protocol = self.colname
@@ -1156,6 +1157,10 @@ function ProtoMaker:register()
         if i > 1 then
             pinfo.cols.info:append(" (+ " .. (i-1) .. " other" .. (i>2 and 's' or '') .. ")")
         end
+
+        local f_interface_id = fe_interface_id_f() 
+        pinfo.cols.info:prepend("NSP:" .. tostring(f_interface_id) .. " ")
+
     end
     local udp_table = DissectorTable.get("udp.port")
     -- register our protocol to handle udp port (default 51001)
