@@ -303,12 +303,12 @@ end
 
 -- Subclass for config packets. They all share that
 -- chid == 0x8000 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
-local CbPktConfig = CbPkt:new('')
+local CbPktConfig = CbPkt:new('cb_cfg')
 CbPktConfig._kind = 1
 
 -- Subclass for preview stream packets. They all share that
 -- (chid & 0x8000) == 0x8000 and (chid&0x0FFF) > 0 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
-local CbPktPrevStreamBase = CbPkt:new('')
+local CbPktPrevStreamBase = CbPkt:new('cb_prev')
 CbPktPrevStreamBase._kind = 2
 
 -- Packet definitions start here
@@ -335,7 +335,7 @@ local CbPktSysProtocolMonitor = CbPktConfig:new('cbPKT_SYSPROTOCOLMONITOR',
     {
         PktField:new{t='UINT32', n='sentpkts', d='Packets sent since last cbPKT_SYSPROTOCOLMONITOR (or 0 if timestamp=0)'},
         _types={
-            [0x01] = "System Protocol Monitor PAcket",
+            [0x01] = "System Protocol Monitor Packet",
         }
     }
 )
@@ -526,25 +526,8 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT16', n='amplrejneg'},
         PktField:new{t='UINT32', n='refelecchan'},
 
-        AField:new{n='placeholder', d='→ Other fields of this packet have not been implemented yet. ←'},
-        -- typedef struct {
-        --     INT16   digmin;     // digital value that cooresponds with the anamin value
-        --     INT16   digmax;     // digital value that cooresponds with the anamax value
-        --     INT32   anamin;     // the minimum analog value present in the signal
-        --     INT32   anamax;     // the maximum analog value present in the signal
-        --     INT32   anagain;    // the gain applied to the default analog values to get the analog values
-        --     char    anaunit[cbLEN_STR_UNIT]; // the unit for the analog signal (eg, "uV" or "MPa")
-        -- } cbSCALING;
+        AField:new{n='placeholder', d='→ Other fields [unitmapping, spkhoops] of this packet have not been implemented yet. ←'},
 
-        -- typedef struct {
-        --     char    label[cbLEN_STR_FILT_LABEL];
-        --     UINT32  hpfreq;     // high-pass corner frequency in milliHertz
-        --     UINT32  hporder;    // high-pass filter order
-        --     UINT32  hptype;     // high-pass filter type
-        --     UINT32  lpfreq;     // low-pass frequency in milliHertz
-        --     UINT32  lporder;    // low-pass filter order
-        --     UINT32  lptype;     // low-pass filter type
-        -- } cbFILTDESC;
         _types={
             [0x40] = "cbPKTTYPE_CHANREP",
             [0x41] = "cbPKTTYPE_CHANREPLABEL",
@@ -603,7 +586,7 @@ local CbPktFileCfg = CbPktConfig:new('cbPKT_FILECFG',
         PktField:new{t='UINT32', n='extctrl', d='If cbFILECFG_OPT_REC this is split number (0 for non-TOC). If cbFILECFG_OPT_STOP this is error code.', format='DEC_HEX'},
         PktField:new{t='STRING', n='username', len=256},
         PktField:new{t='STRING', n='filename', len=256},
-        PktField:new{t='STRING', n='comment', len=256},
+        PktField:new{t='STRING', n='comment', len=256, d='Comment or Datetime'},
         _types={
             [0x61] = "File Config response cbPKTTYPE_REPFILECFG",
             [0xE1] = "File Config request cbPKTTYPE_SETFILECFG",
@@ -1135,6 +1118,7 @@ function ProtoMaker:register()
         self:makeFieldsForPacket(p)
     end
 
+    local fe_interface_id_f = Field.new("frame.interface_id")
 
     function self.proto.dissector(buffer, pinfo, tree)
         pinfo.cols.protocol = self.colname
@@ -1165,6 +1149,10 @@ function ProtoMaker:register()
         if i > 1 then
             pinfo.cols.info:append(" (+ " .. (i-1) .. " other" .. (i>2 and 's' or '') .. ")")
         end
+
+        local f_interface_id = fe_interface_id_f() 
+        pinfo.cols.info:prepend("NSP:" .. tostring(f_interface_id) .. " ")
+
     end
     local udp_table = DissectorTable.get("udp.port")
     -- register our protocol to handle udp port (default 51001)
