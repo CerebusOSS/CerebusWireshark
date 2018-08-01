@@ -303,12 +303,12 @@ end
 
 -- Subclass for config packets. They all share that
 -- chid == 0x8000 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
-local CbPktConfig = CbPkt:new('')
+local CbPktConfig = CbPkt:new('cb_cfg')
 CbPktConfig._kind = 1
 
 -- Subclass for preview stream packets. They all share that
 -- (chid & 0x8000) == 0x8000 and (chid&0x0FFF) > 0 and 'type' corresponds to a packet type, which we store in the 'type' field's valuestring
-local CbPktPrevStreamBase = CbPkt:new('')
+local CbPktPrevStreamBase = CbPkt:new('cb_prev')
 CbPktPrevStreamBase._kind = 2
 
 -- Packet definitions start here
