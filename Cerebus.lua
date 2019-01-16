@@ -244,12 +244,20 @@ function CbPkt:match(chid, type)
         return self.pkttypes.cbPKT_GROUP
     end
 
-    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT  and self.pkttypes.nevPKT_GENERIC ~= nil then
-        return self.pkttypes.nevPKT_GENERIC
+    if chid > 0x0000 and chid < cbConst.cbNUM_ANALOG_CHANS  and self.pkttypes.nevPKT_SPIKE ~= nil then
+        return self.pkttypes.nevPKT_SPIKE
     end
 
     if (cbConst.cbFIRST_DIGIN_CHAN < chid) and (chid <= cbConst.cbFIRST_DIGIN_CHAN+cbConst.cbNUM_DIGIN_CHANS) and self.pkttypes.nevPKT_DIGIN ~= nil then
         return self.pkttypes.nevPKT_DIGIN
+    end
+
+    if (cbConst.cbFIRST_SERIAL_CHAN < chid) and (chid <= cbConst.cbFIRST_SERIAL_CHAN+cbConst.cbNUM_SERIAL_CHANS) and self.pkttypes.nevPKT_SERIALIN ~= nil then
+        return self.pkttypes.nevPKT_SERIALIN
+    end
+
+    if chid > 0x0000  and self.pkttypes.nevPKT_GENERIC ~= nil then
+        return self.pkttypes.nevPKT_GENERIC
     end
 
     return self.pkttypes['cbPKT_GENERIC']
@@ -739,6 +747,18 @@ local CbPktGroupInfo = CbPktConfig:new('cbPKT_GROUPINFO',
     }
 )
 
+-- Channel/Unit selection packets
+local CbPktGroupInfo = CbPktConfig:new('cbPKT_UNIT_SELECTION',
+    {
+        PktField:new{t='INT32', n='lastchan',format='DEC', d='Last selected channel'},
+        PktField:new{t='UINT16', n='abyUnitSelections', len=cbConst.cbMAXCHANS, d='channel-unit selections', format='HEX'},
+        _types={
+            [0x62] = "Unit Selection Response cbPKT_UNIT_SELECTION",
+            [0xE2] = "Unit Selection Request cbPKT_UNIT_SELECTION",
+        }
+    }
+)
+
 -- Processor Information packets
 local CbPktProcInfo = CbPktConfig:new('cbPKT_PROCINFO',
     {
@@ -1073,14 +1093,24 @@ function CbPktGroup:makeInfoString()
     return self.name .. "(" .. self.dfields['type']()() .. ")"
 end
 
--- Spike packets
+-- Generic Event packets
 local CbPktNev = CbPkt:new('nevPKT_GENERIC',
     {
         PktField:new{t='INT16', n='data', lf='dlen', lfactor=2},
     }
 )
 CbPktNev.fields['type'].d='Packet Type'
-CbPktNev.fields['type'].format='DEC'
+CbPktNev.fields['type'].format='HEX_DEC'
+
+
+-- Spike packets
+local CbPktNevSpk = CbPkt:new('nevPKT_SPIKE',
+    {
+        PktField:new{t='INT16', n='wave', lf='dlen', lfactor=2},
+    }
+)
+CbPktNevSpk.fields['type'].d='Packet Type'
+CbPktNevSpk.fields['type'].format='HEX_DEC'
 
 -- DigIn packets
 local CbPktNevDigIn = CbPkt:new('nevPKT_DIGIN',
@@ -1089,7 +1119,18 @@ local CbPktNevDigIn = CbPkt:new('nevPKT_DIGIN',
     }
 )
 CbPktNevDigIn.fields['type'].d='Packet Type'
-CbPktNevDigIn.fields['type'].format='DEC'
+CbPktNevDigIn.fields['type'].format='HEX_DEC'
+
+
+-- SerialIn packets
+local CbPktNevSerialIn = CbPkt:new('nevPKT_SERIALIN',
+    {
+        PktField:new{t='UINT32', n='data', lf='dlen', format='HEX_DEC'},
+    }
+)
+CbPktNevSerialIn.fields['type'].d='Packet Type'
+CbPktNevSerialIn.fields['type'].format='HEX_DEC'
+
 
 -- Packet definitions end here.
 
@@ -1215,16 +1256,37 @@ function ProtoMaker:addSubtreeForPkt(buffer, tree, pkt)
                 local brng = buffer(bPos, width)
                 local this_rangeGetter = pf:rangeGetter()
                 if this_rangeGetter ~= nil then
-                    subtree = current_parent_tree:add_le(self.fByPkt[pkt][pf.n], tvb_rng_wh, brng[pf:rangeGetter()](brng) )
+                    subtree = current_parent_tree:add_le(self.fByPkt[pkt][pf.n], tvb_rng_wh, brng[this_rangeGetter](brng) )
                 else
                     subtree = current_parent_tree:add_le(self.fByPkt[pkt][pf.n], tvb_rng_wh)
                 end
                 if mult > 1 then
                     local n = mult - 1
-                    subtree:append_text(" and "..n.." more item"..(n>1 and "s" or ""))
+                    
+                    subtree:append_text(" and "..n.." additional item"..(n>1 and "s" or "") .. ' ')
+                    
                     for i=0,n do
                         brng = buffer(bPos + width * i, width)
-                        subtree:add( brng, 'item '..i..': ' .. brng[pf:rangeGetter()](brng))
+                        
+                        local this_val = ''
+                        if base[pf.format] == base.DEC then
+                            this_val = string.format("%02d", brng[this_rangeGetter](brng))
+                        elseif base[pf.format] == base.HEX then
+                            local fstr = string.format("0x%%0%dx", pf:dataWidth() * 2)
+                            this_val = string.format(fstr, brng[this_rangeGetter](brng))
+                        elseif base[pf.format] == base.DEC_HEX then
+                            local fstr = string.format("%%d (0x%%0%dx)", pf:dataWidth() * 2)
+                            this_val = string.format(fstr, brng[this_rangeGetter](brng), brng[this_rangeGetter](brng))
+                        elseif base[pf.format] == base.HEX_DEC then
+                            local fstr = string.format("0x%%0%dx (%%d)", pf:dataWidth() * 2)
+                            
+                            this_val = string.format(fstr, brng[this_rangeGetter](brng), brng[this_rangeGetter](brng))
+                        else
+                            this_val = brng[this_rangeGetter](brng)
+                        end
+                        
+                        subtree:add( brng, 'item '..i..': '.. this_val)
+                        
                     end
                 end
             end
