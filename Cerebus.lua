@@ -1,7 +1,7 @@
 -- Wireshark dissector for UDP packets exchanged between
 -- Neural Signal Processors and controlling PCs
 --
--- Copyright 2017 Jonas Zimmermann
+-- Copyright 2017 Jonas Zimmermann, 2022 Hyrum Sessions
 
 print("Loading cb protocol ...")
 
@@ -85,7 +85,7 @@ local cbConst = {}
 cbConst.cbMAXHOOPS = 4
 cbConst.cbMAXSITES = 4
 cbConst.cbMAXSITEPLOTS = ((cbConst.cbMAXSITES - 1) * cbConst.cbMAXSITES / 2)
-cbConst.cbNUM_FE_CHANS        = 128                                       -- #Front end channels
+cbConst.cbNUM_FE_CHANS        = 128                                       -- #Front end channels. TODO: 256 on some systems.
 cbConst.cbNUM_ANAIN_CHANS     = 16                                        -- #Analog Input channels
 cbConst.cbNUM_ANALOG_CHANS    = (cbConst.cbNUM_FE_CHANS + cbConst.cbNUM_ANAIN_CHANS)      -- Total Analog Inputs
 cbConst.cbNUM_ANAOUT_CHANS    = 4                                         -- #Analog Output channels
@@ -153,6 +153,7 @@ local PktField = AField:new{
         UINT32=4,
         INT32=4,
         FLOAT=4,
+        UINT64=8,
         DOUBLE=8,
         STRING=1,
     },
@@ -162,6 +163,7 @@ local PktField = AField:new{
         UINT16='le_uint',
         INT16='le_int',
         UINT32='le_uint',
+        UINT64='le_uint',
         INT32='le_int',
         FLOAT='le_float',
         DOUBLE='le_float',
@@ -185,10 +187,12 @@ local FlagField = AField:new{
 local CbPkt = klass:new{
     name='HEADER',
     fields={
-        PktField:new{t='UINT32', n='time', d='Timestamp in tics'},
+        PktField:new{t='UINT32', n='time', d='Timestamp in tics'},  -- # TODO: UINT64 in protocol 4.x
         PktField:new{t='UINT16', n='chid', format='HEX_DEC'},
         PktField:new{t='UINT8', n='type', format='HEX'},
-        PktField:new{t='UINT8', n='dlen', d='Packet Data Length (in quadlets)'}
+        PktField:new{t='UINT8', n='dlen', d='Packet Data Length (in quadlets)'}  -- # TODO: UINT16 in protocol 4.x
+        -- PktField:new{t='UINT8', n='instrument', format='HEX'},
+        -- PktField:new{t='UINT16', n='reserved', format='HEX'}
     },
     dfields={},
     pkttypes= setmetatable({}, {__mode="v"}),
@@ -722,7 +726,6 @@ local CbPktFSBasis = CbPktConfig:new('cbPKT_FS_BASIS',
     }
 )
 
-
 -- Sample Group Information packets
 local CbPktGroupInfo = CbPktConfig:new('cbPKT_GROUPINFO',
     {
@@ -943,6 +946,78 @@ local CbPktNM = CbPktConfig:new('cbPKT_NM',
     }
 )
 
+-- cbPKT_VIDEOSYNCH
+local CbPktVideosynch = CbPktConfig:new('cbPKT_VIDEOSYNCH',
+    {
+        PktField:new{t='UINT16', n='split', d="file split number"},
+        PktField:new{t='UINT32', n='frame'},
+        PktField:new{t='UINT16', n='etime', d="elapsed time"},
+        PktField:new{t='UINT16', n='id', d="video source id"},
+        _types={
+            [0x29] = "VideoSynch Report cbPKTTYPE_VIDEOSYNCHREP",
+            [0xA9] = "VideoSynch Request cbPKTTYPE_VIDEOSYNCHSET",
+        }
+    }
+)
+
+-- cbPKT_VIDEOTRACK
+local CbPktVideoTrack = CbPktConfig:new('cbPKT_VIDEOTRACK',
+    {
+        PktField:new{t='UINT16', n='parentID'},
+        PktField:new{t='UINT16', n='nodeID'},
+        PktField:new{t='UINT16', n='nodeCount'},
+        PktField:new{t='UINT16', n='pointCount'},
+        _types={
+            [0x5F] = "VideoTrack Report cbPKTTYPE_VIDEOTRACKREP",
+            [0xDF] = "VideoTrack Request cbPKTTYPE_VIDEOTRACKSET",
+        }
+    }
+)
+
+-- cbPKT_NPLAY
+local CbPktNPlay = CbPktConfig:new('cbPKT_NPLAY',
+    {
+        PktField:new{t='UINT32', n='ftimehi', d='ftime hi'},
+        PktField:new{t='UINT32', n='ftimelo', d='ftime lo'},
+        PktField:new{t='UINT32', n='stimehi', d='stime hi'},
+        PktField:new{t='UINT32', n='stimelo', d='stime lo'},
+        PktField:new{t='UINT32', n='etimehi', d='etime hi'},
+        PktField:new{t='UINT32', n='etimelo', d='etime lo'},
+        PktField:new{t='UINT32', n='valhi', d='val hi'},
+        PktField:new{t='UINT32', n='vallo', d='val lo'},
+        PktField:new{t='UINT16', n='mode', valuestring=
+            {
+                [0]="cbNPLAY_MODE_NONE",
+                [1]="cbNPLAY_MODE_PAUSE pause if val is non-zero, un-pause otherwise",
+                [2]="cbNPLAY_MODE_SEEK seek to time val",
+                [3]="cbNPLAY_MODE_CONFIG request full config",
+                [4]="cbNPLAY_MODE_OPEN open new file in val for playback",
+                [5]="cbNPLAY_MODE_PATH use the directory path in fname",
+                [6]="cbNPLAY_MODE_CONFIGMAIN request main config packet",
+                [7]="cbNPLAY_MODE_STEP run val procTime steps and pause, then send cbNPLAY_FLAG_STEPPED",
+                [8]="cbNPLAY_MODE_SINGLE single mode if val is non-zero, wrap otherwise",
+                [9]="cbNPLAY_MODE_RESET reset nPlay",
+                [10]="cbNPLAY_MODE_NEVRESORT resort NEV if val is non-zero, do not if otherwise",
+                [11]="cbNPLAY_MODE_AUDIO_CMD perform audio command in val (cbAUDIO_CMD_*), with option opt",
+            }
+        },
+        PktField:new{t='UINT16', n='flag', valuestring=
+            {
+                [0]="cbNPLAY_FLAG_NONE no flag",
+                [1]="cbNPLAY_FLAG_CONF config packet (val is fname file index)",
+                [3]="cbNPLAY_FLAG_MAIN main config packet (val is file version)",
+                [2]="cbNPLAY_FLAG_DONE step command done",
+            }
+        },
+        PktField:new{t='FLOAT', n='speed'},
+        PktField:new{t='STRING', n='fname', len=256},
+        _types={
+            [0x5C] = "NPlay Report cbPKTTYPE_NPLAYREP",
+            [0xDC] = "NPlay Request cbPKTTYPE_NPLAYSET",
+        }
+    }
+)
+
 -- cbPKT_AOUT_WAVEFORM Analog output packets
 local CbPktAoutWaveform = CbPktConfig:new('cbPKT_AOUT_WAVEFORM',
     {
@@ -1035,6 +1110,50 @@ local CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
     }
 )
 
+-- Comment Packets
+local CbPktComment = CbPktConfig:new('cbPKT_COMMENT',
+    {
+        PktField:new{t='UINT8', n='type', format='HEX'},
+        PktField:new{t='UINT8', n='flags', d='Comment flags', format='HEX', valuestring={
+            [0x00]="RGBA cbCOMMENT_FLAG_RGBA",
+            [0x01]="RGBA cbCOMMENT_FLAG_TIMESTAMP",
+        }},
+        PktField:new{t='UINT8', n='reserved', format='HEX'},
+        PktField:new{t='UINT8', n='reserved', format='HEX'},
+        PktField:new{t='UINT32', n='data', format='HEX'},
+        PktField:new{t='STRING', n='comment', len=128},
+        _types={
+            [0x31] = "Comment response cbPKTTYPE_COMMENTREP",
+            [0xB1] = "Comment request cbPKTTYPE_COMMENTSET",
+        }
+    }
+)
+
+-- LOG Packets
+local CbPktLog = CbPktConfig:new('cbPKT_LOG',
+    {
+        PktField:new{t='UINT16', n='mode', d='Log Mode', format='HEX', valuestring={
+            [0x00]="Normal log cbLOG_MODE_NONE",
+            [0x01]="Critical log cbLOG_MODE_CRITICAL",
+            [0x02]="RPC log cbLOG_MODE_RPC",
+            [0x03]="RPC log cbLOG_MODE_PLUGINFO",
+            [0x04]="RPC log cbLOG_MODE_RPC_RES",
+            [0x05]="RPC log cbLOG_MODE_PLUGINERR",
+            [0x06]="RPC log cbLOG_MODE_RPC_END",
+            [0x07]="RPC log cbLOG_MODE_RPC_KILL",
+            [0x08]="RPC log cbLOG_MODE_RPC_INPUT",
+            [0x09]="RPC log cbLOG_MODE_UPLOAD_RES",
+            [0x0A]="RPC log cbLOG_MODE_ENDPLUGIN",
+            [0x0B]="RPC log cbLOG_MODE_REBOOT",
+        }},
+        PktField:new{t='STRING', n='name', len=16},
+        PktField:new{t='STRING', n='desc', len=128},
+        _types={
+            [0x63] = "LOG response cbPKTTYPE_LOGREP",
+            [0xE3] = "LOG request cbPKTTYPE_LOGSET",
+        }
+    }
+)
 
 -- Preview Stream
 local CbPktStreamPrev = CbPktPrevStreamBase:new('cbPKT_STREAMPREV',
@@ -1074,7 +1193,7 @@ function CbPktGroup:makeInfoString()
 end
 
 -- Spike packets
-local CbPktNev = CbPkt:new('nevPKT_GENERIC',
+local CbPktNev = CbPkt:new('nevPKT_SPK',
     {
         PktField:new{t='INT16', n='data', lf='dlen', lfactor=2},
     }
