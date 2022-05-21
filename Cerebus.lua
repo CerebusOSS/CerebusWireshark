@@ -3,7 +3,7 @@
 --
 -- Copyright 2017 Jonas Zimmermann
 
-info("Loading cb protocol ...")
+print("Loading cb protocol ...")
 
 -- Definition of a few helpers
 
@@ -1112,7 +1112,7 @@ function ProtoMaker:new(o)
     return newobj
 end
 function ProtoMaker:register()
-    info("register proto ...")
+    print("register proto ...")
 
     for _,p in pairs(CbPkt.pkttypes) do
         self:makeFieldsForPacket(p)
