@@ -151,6 +151,7 @@ local PktField = AField:new{
         UINT16=2,
         INT16=2,
         UINT32=4,
+        UINT64=8,
         INT32=4,
         FLOAT=4,
         DOUBLE=8,
@@ -185,8 +186,7 @@ local FlagField = AField:new{
 local CbPkt = klass:new{
     name='HEADER',
     fields={
-        PktField:new{t='UINT32', n='timehi', d='Timestamp in tics'},
-        PktField:new{t='UINT32', n='timelo', d='Timestamp in tics'},
+        PktField:new{t='UINT64', n='time', d='Timestamp in tics'},
         PktField:new{t='UINT16', n='chid', format='HEX_DEC'},
         PktField:new{t='UINT8', n='type', format='HEX'},
         PktField:new{t='UINT16', n='dlen', d='Packet Data Length (in quadlets)'},
@@ -247,8 +247,8 @@ function CbPkt:match(chid, type)
         return self.pkttypes.cbPKT_GROUP
     end
 
-    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT  and self.pkttypes.nevPKT_GENERIC ~= nil then
-        return self.pkttypes.nevPKT_GENERIC
+    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT and self.pkttypes.nevPKT_SPK ~= nil then
+        return self.pkttypes.nevPKT_SPK
     end
 
     if (cbConst.cbFIRST_DIGIN_CHAN < chid) and (chid <= cbConst.cbFIRST_DIGIN_CHAN+cbConst.cbNUM_DIGIN_CHANS) and self.pkttypes.nevPKT_DIGIN ~= nil then
@@ -980,14 +980,10 @@ local CbPktVideoTrack = CbPktConfig:new('cbPKT_VIDEOTRACK',
 -- cbPKT_NPLAY
 local CbPktNPlay = CbPktConfig:new('cbPKT_NPLAY',
     {
-        PktField:new{t='UINT32', n='ftimehi', d='ftime hi'},
-        PktField:new{t='UINT32', n='ftimelo', d='ftime lo'},
-        PktField:new{t='UINT32', n='stimehi', d='stime hi'},
-        PktField:new{t='UINT32', n='stimelo', d='stime lo'},
-        PktField:new{t='UINT32', n='etimehi', d='etime hi'},
-        PktField:new{t='UINT32', n='etimelo', d='etime lo'},
-        PktField:new{t='UINT32', n='valhi', d='val hi'},
-        PktField:new{t='UINT32', n='vallo', d='val lo'},
+        PktField:new{t='UINT64', n='ftime', d='ftime'},
+        PktField:new{t='UINT64', n='stime', d='stime'},
+        PktField:new{t='UINT64', n='etime', d='etime'},
+        PktField:new{t='UINT64', n='val', d='val'},
         PktField:new{t='UINT16', n='mode', valuestring=
             {
                 [0]="cbNPLAY_MODE_NONE",
