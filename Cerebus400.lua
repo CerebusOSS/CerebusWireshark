@@ -489,8 +489,6 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT32', n='outvalue'},
 
         PktField:new{t='UINT8', n='trigtype'},
-        PktField:new{t='UINT16', n='reserved'},
-        PktField:new{t='UINT8', n='triginst'},
         PktField:new{t='UINT16', n='trigchan'},
         PktField:new{t='UINT16', n='trigval'},
 
