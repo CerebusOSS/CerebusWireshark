@@ -1384,7 +1384,7 @@ local ProtoMaker = klass:new{
     name='Cerebus',
     desc="Cerebus NSP Communication",
     colname="Cerebus",
-    port=51001
+    ports={51001, 51002, 51003}
 }
 function ProtoMaker:new(o)
     o = o or {}
@@ -1439,8 +1439,10 @@ function ProtoMaker:register()
 
     end
     local udp_table = DissectorTable.get("udp.port")
-    -- register our protocol to handle udp port (default 51001)
-    udp_table:add(self.port, self.proto)
+    -- register our protocol to handle udp ports
+    for _, p in ipairs(self.ports) do
+        udp_table:add(p, self.proto)
+    end
 end
 function ProtoMaker:makeFieldsForPacket(pkt)
     local n = self.name .. "." .. pkt.name .. "."
