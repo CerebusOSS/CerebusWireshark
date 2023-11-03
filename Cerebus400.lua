@@ -642,8 +642,8 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT32', n='outvalue'},
 
         PktField:new{t='UINT8', n='trigtype'},
-        !-- Not sure when the next 2 lines were added to protocol. 4.0 or 4.11.
-        !-- If this breaks 4.0 then delete the next 2 lines.
+        -- Not sure when the next 2 lines were added to protocol. 4.0 or 4.11.
+        -- If this breaks 4.0 then delete the next 2 lines.
         PktField:new{t='UINT16', n='reserved'},
         PktField:new{t='UINT8', n='triginst'},
         PktField:new{t='UINT16', n='trigchan'},
