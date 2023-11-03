@@ -951,7 +951,7 @@ local CbPktVideosynch = CbPktConfig:new('cbPKT_VIDEOSYNCH',
     {
         PktField:new{t='UINT16', n='split', d="file split number"},
         PktField:new{t='UINT32', n='frame'},
-        PktField:new{t='UINT16', n='etime', d="elapsed time"},
+        PktField:new{t='UINT32', n='etime', d="elapsed time"},
         PktField:new{t='UINT16', n='id', d="video source id"},
         _types={
             [0x29] = "VideoSynch Report cbPKTTYPE_VIDEOSYNCHREP",
@@ -1085,6 +1085,17 @@ local CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
     }
 )
 
+-- DOut set packets
+local CbPktDOut = CbPktConfig:new('cbPKT_SET_DOUT',
+    {
+        PktField:new{t='INT16', n='chan', format='DEC'},
+        PktField:new{t='INT16', n='value'},
+        _types={
+            [0x5D] = "Set Dout Report cbPKTTYPE_SET_DOUTREP",
+            [0xDD] = "Set Dout Request cbPKTTYPE_SET_DOUTSET",
+        }
+    }
+)
 
 -- Preview streams
 -- Configuration
