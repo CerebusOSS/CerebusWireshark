@@ -186,7 +186,7 @@ local FlagField = AField:new{
 local CbPkt = klass:new{
     name='HEADER',
     fields={
-        PktField:new{t='UINT64', n='time', d='Timestamp in tics'},
+        PktField:new{t='UINT64', n='time', d='Timestamp in tics', format='HEX'},
         PktField:new{t='UINT16', n='chid', format='HEX_DEC'},
         PktField:new{t='UINT8', n='type', format='HEX'},
         PktField:new{t='UINT16', n='dlen', d='Packet Data Length (in quadlets)'},
@@ -247,8 +247,8 @@ function CbPkt:match(chid, type)
         return self.pkttypes.cbPKT_GROUP
     end
 
-    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT and self.pkttypes.nevPKT_SPK ~= nil then
-        return self.pkttypes.nevPKT_SPK
+    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT  and self.pkttypes.nevPKT_GENERIC ~= nil then
+        return self.pkttypes.nevPKT_GENERIC
     end
 
     if (cbConst.cbFIRST_DIGIN_CHAN < chid) and (chid <= cbConst.cbFIRST_DIGIN_CHAN+cbConst.cbNUM_DIGIN_CHANS) and self.pkttypes.nevPKT_DIGIN ~= nil then
@@ -642,19 +642,25 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT32', n='outvalue'},
 
         PktField:new{t='UINT8', n='trigtype'},
+        !-- Not sure when the next 2 lines were added to protocol. 4.0 or 4.11.
+        !-- If this breaks 4.0 then delete the next 2 lines.
+        PktField:new{t='UINT16', n='reserved'},
+        PktField:new{t='UINT8', n='triginst'},
         PktField:new{t='UINT16', n='trigchan'},
         PktField:new{t='UINT16', n='trigval'},
 
         PktField:new{t='UINT32', n='ainpopts', d='analog input options', format='HEX'},
-        FlagField:new{t='BOOLEAN', n='ainpopts.lnc_run_hard', format=32, mask=0x00000001, d='cbAINP_LNC_RUN_HARD Hardware-based LNC running and adapting according to the adaptation const', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.lnc_run_soft', format=32, mask=0x00000002, d='cbAINP_LNC_RUN_SOFT Software-based LNC running and adapting according to the adaptation const', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.lnc_hold', format=32, mask=0x00000004, d='cbAINP_LNC_HOLD LNC running, but not adapting', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.lnc_mask', format=32, mask=0x00000007, d='cbAINP_LNC_MASK Mask for LNC Flags', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.refelec_lfpspk', format=32, mask=0x00000010, d='cbAINP_REFELEC_LFPSPK Apply reference electrode to LFP & Spike', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.refelec_spk', format=32, mask=0x00000020, d='cbAINP_REFELEC_SPK Apply reference electrode to Spikes only', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.refelec_mask', format=32, mask=0x00000030, d='cbAINP_REFELEC_MASK Mask for Reference Electrode flags', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.rawstream_enabled', format=32, mask=0x00000040, d='cbAINP_RAWSTREAM_ENABLED Raw data stream enabled', valuestring={'yes', 'no'}},
-        FlagField:new{t='BOOLEAN', n='ainpopts.offset_correct', format=32, mask=0x00000100, d='cbAINP_OFFSET_CORRECT Offset correction mode (0-disabled 1-enabled)', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.rawpreview', format=32, mask=0x00000001, d='cbAINP_RAWPREVIEW Generate scrolling preview data for the raw channel', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.lnc', format=32, mask=0x00000002, d='cbAINP_LNC Line Noise Cancellation', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.lncpreview', format=32, mask=0x00000004, d='cbAINP_LNCPREVIEW Retrieve the LNC correction waveform', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.smpstream', format=32, mask=0x00000010, d='cbAINP_SMPSTREAM stream the analog input stream directly to disk', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.smpfilter', format=32, mask=0x00000020, d='cbAINP_SMPFILTER Digitally filter the analog input stream', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.rawstream', format=32, mask=0x00000040, d='cbAINP_RAWSTREAM Raw data stream available', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkstream', format=32, mask=0x00000100, d='cbAINP_SPKSTREAM Spike Stream is available', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkfilter', format=32, mask=0x00000200, d='cbAINP_SPKFILTER Selectable Filters', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkpreview', format=32, mask=0x00000400, d='cbAINP_SPKPREVIEW Generate scrolling preview of the spike channel', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.spkproc', format=32, mask=0x00000800, d='cbAINP_SPKPROC Channel is able to do online spike processing', valuestring={'yes', 'no'}},
+        FlagField:new{t='BOOLEAN', n='ainpopts.offset_cor', format=32, mask=0x00001000, d='cbAINP_OFFSET_CORRECT_CAP Offset correction mode (0-disabled 1-enabled)', valuestring={'yes', 'no'}},
 
         PktField:new{t='UINT32', n='lncrate'},
 
@@ -1119,7 +1125,7 @@ local CbPktVideosynch = CbPktConfig:new('cbPKT_VIDEOSYNCH',
     {
         PktField:new{t='UINT16', n='split', d="file split number"},
         PktField:new{t='UINT32', n='frame'},
-        PktField:new{t='UINT16', n='etime', d="elapsed time"},
+        PktField:new{t='UINT32', n='etime', d="elapsed time"},
         PktField:new{t='UINT16', n='id', d="video source id"},
         _types={
             [0x29] = "VideoSynch Report cbPKTTYPE_VIDEOSYNCHREP",
@@ -1195,7 +1201,7 @@ local CbPktAoutWaveform = CbPktConfig:new('cbPKT_AOUT_WAVEFORM',
             }
         },
         PktField:new{t='UINT32', n='repeats'},
-        PktField:new{t='UINT16', n='trig', valuestring=
+        PktField:new{t='UINT8', n='trig', valuestring=
             {
                 [0]="cbWAVEFORM_TRIGGER_NONE instant software trigger",
                 [1]="cbWAVEFORM_TRIGGER_DINPREG digital input rising edge trigger",
@@ -1206,6 +1212,7 @@ local CbPktAoutWaveform = CbPktConfig:new('cbPKT_AOUT_WAVEFORM',
                 [6]="cbWAVEFORM_TRIGGER_EXTENSION extension trigger",
             }
         },
+        PktField:new{t='UINT8', n='trigInst'},
         PktField:new{t='UINT16', n='trigChan'},
         PktField:new{t='UINT16', n='trigValue'},
         PktField:new{t='UINT8', n='active'},
@@ -1249,6 +1256,17 @@ local CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
     }
 )
 
+-- DOut set packets
+local CbPktDOut = CbPktConfig:new('cbPKT_SET_DOUT',
+    {
+        PktField:new{t='INT16', n='chan', format='DEC'},
+        PktField:new{t='INT16', n='value'},
+        _types={
+            [0x5D] = "Set Dout Report cbPKTTYPE_SET_DOUTREP",
+            [0xDD] = "Set Dout Request cbPKTTYPE_SET_DOUTSET",
+        }
+    }
+)
 
 -- Preview streams
 -- Configuration
@@ -1434,7 +1452,7 @@ function ProtoMaker:register()
             pinfo.cols.info:append(" (+ " .. (i-1) .. " other" .. (i>2 and 's' or '') .. ")")
         end
 
-        local f_interface_id = fe_interface_id_f() 
+        local f_interface_id = fe_interface_id_f()
         pinfo.cols.info:prepend("NSP:" .. tostring(f_interface_id) .. " ")
 
     end
