@@ -186,7 +186,7 @@ local FlagField = AField:new{
 local CbPkt = klass:new{
     name='HEADER',
     fields={
-        PktField:new{t='UINT64', n='time', d='Timestamp in tics', format='HEX'},
+        PktField:new{t='UINT64', n='time', d='Timestamp in tics'},
         PktField:new{t='UINT16', n='chid', format='HEX_DEC'},
         PktField:new{t='UINT16', n='type', format='HEX'},
         PktField:new{t='UINT16', n='dlen', d='Packet Data Length (in quadlets)'},
@@ -248,8 +248,8 @@ function CbPkt:match(chid, pkt_type)
         return self.pkttypes.cbPKT_GROUP
     end
 
-    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT  and self.pkttypes.nevPKT_GENERIC ~= nil then
-        return self.pkttypes.nevPKT_GENERIC
+    if chid > 0x0000 and chid < cbConst.cbPKT_SPKCACHELINECNT and self.pkttypes.nevPKT_SPK ~= nil then
+        return self.pkttypes.nevPKT_SPK
     end
 
     if (cbConst.cbFIRST_DIGIN_CHAN < chid) and (chid <= cbConst.cbFIRST_DIGIN_CHAN+cbConst.cbNUM_DIGIN_CHANS) and self.pkttypes.nevPKT_DIGIN ~= nil then
@@ -338,7 +338,7 @@ local CbPktSysHeartbeat = CbPktConfig:new('cbPKT_SYSHEARTBEAT', {
 local CbPktSysProtocolMonitor = CbPktConfig:new('cbPKT_SYSPROTOCOLMONITOR',
     {
         PktField:new{t='UINT32', n='sentpkts', d='Packets sent since last cbPKT_SYSPROTOCOLMONITOR (or 0 if timestamp=0)'},
-        PktField:new{t='UINT32', n='counter', d='Number of sysprotocol packets sent'},
+        PktField:new{t='UINT32', n='counter', d='Number of cbPKT_SYSPROTOCOLMONITOR sent'},
         _types={
             [0x0001] = "System Protocol Monitor Packet",
         }
@@ -422,11 +422,11 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='UINT32', n='bank', d='address of the bank', format='DEC'},
         PktField:new{t='UINT32', n='term', d='terminal number', format='DEC_HEX'},
         PktField:new{t='UINT32', n='chancaps', d='channel capabilities', format='HEX'},
-        PktField:new{t='UINT32', n='doutcaps', d='digital output capabilities', format='HEX'},
-        PktField:new{t='UINT32', n='dinpcaps', d='digital input capabilities', format='HEX'},
-        PktField:new{t='UINT32', n='aoutcaps', d='analog output capabilities', format='HEX'},
-        PktField:new{t='UINT32', n='ainpcaps', d='analog input capabilities', format='HEX'},
-        PktField:new{t='UINT32', n='spkcaps', d='spike capabilities', format='HEX'},
+        PktField:new{t='UINT32', n='doutcaps', d='digital output capablities', format='HEX'},
+        PktField:new{t='UINT32', n='dinpcaps', d='digital input capablities', format='HEX'},
+        PktField:new{t='UINT32', n='aoutcaps', d='analog output capablities', format='HEX'},
+        PktField:new{t='UINT32', n='ainpcaps', d='analog input capablities', format='HEX'},
+        PktField:new{t='UINT32', n='spkcaps', d='spike capablities', format='HEX'},
 
         AField:new{n='physcalin', d='physical channel scaling information (in)'},
         PktField:new{t='INT16', n='physcalin.digmin', d='digital value that cooresponds with the anamin value'},
@@ -533,8 +533,141 @@ local CbPktChanInfo = CbPktConfig:new('cbPKT_CHANINFO',
         PktField:new{t='INT16', n='amplrejpos'},
         PktField:new{t='INT16', n='amplrejneg'},
         PktField:new{t='UINT32', n='refelecchan'},
+        
+        -- cbMANUALUNITMAPPING unitmapping[cbMAXUNITS]
+        AField:new{n='unitmapping1', d='Defines an ellipsoid for sorting unit 1'},
+        PktField:new{t='INT16', n='unitmapping1.nOverride'},
+        PktField:new{t='INT16', n='unitmapping1.afOrigin', len=3},
+        PktField:new{t='INT16', n='unitmapping1.afShape', len=9},
+        PktField:new{t='INT16', n='unitmapping1.aPhi'},
+        PktField:new{t='UINT32', n='unitmapping1.bValid'},
+        AField:new{n='unitmapping2', d='Defines an ellipsoid for sorting unit 2'},
+        PktField:new{t='INT16', n='unitmapping2.nOverride'},
+        PktField:new{t='INT16', n='unitmapping2.afOrigin', len=3},
+        PktField:new{t='INT16', n='unitmapping2.afShape', len=9},
+        PktField:new{t='INT16', n='unitmapping2.aPhi'},
+        PktField:new{t='UINT32', n='unitmapping2.bValid'},
+        AField:new{n='unitmapping3', d='Defines an ellipsoid for sorting unit 3'},
+        PktField:new{t='INT16', n='unitmapping3.nOverride'},
+        PktField:new{t='INT16', n='unitmapping3.afOrigin', len=3},
+        PktField:new{t='INT16', n='unitmapping3.afShape', len=9},
+        PktField:new{t='INT16', n='unitmapping3.aPhi'},
+        PktField:new{t='UINT32', n='unitmapping3.bValid'},
+        AField:new{n='unitmapping4', d='Defines an ellipsoid for sorting unit 4'},
+        PktField:new{t='INT16', n='unitmapping4.nOverride'},
+        PktField:new{t='INT16', n='unitmapping4.afOrigin', len=3},
+        PktField:new{t='INT16', n='unitmapping4.afShape', len=9},
+        PktField:new{t='INT16', n='unitmapping4.aPhi'},
+        PktField:new{t='UINT32', n='unitmapping4.bValid'},
+        AField:new{n='unitmapping5', d='Defines an ellipsoid for sorting unit 5'},
+        PktField:new{t='INT16', n='unitmapping5.nOverride'},
+        PktField:new{t='INT16', n='unitmapping5.afOrigin', len=3},
+        PktField:new{t='INT16', n='unitmapping5.afShape', len=9},
+        PktField:new{t='INT16', n='unitmapping5.aPhi'},
+        PktField:new{t='UINT32', n='unitmapping5.bValid'},
+        -- cbHOOP spkhoops[cbMAXUNITS][cbMAXHOOPS]
+        AField:new{n='spkhoops1_1', d='Defines the hoop used for sorting unit 1 hoop 1'},
+        PktField:new{t='UINT16', n='spkhoops1_1.valid'},
+        PktField:new{t='INT16', n='spkhoops1_1.time'},
+        PktField:new{t='INT16', n='spkhoops1_1.max'},
+        PktField:new{t='INT16', n='spkhoops1_1.min'},
+        AField:new{n='spkhoops1_2', d='Defines the hoop used for sorting unit 1 hoop 2'},
+        PktField:new{t='UINT16', n='spkhoops1_2.valid'},
+        PktField:new{t='INT16', n='spkhoops1_2.time'},
+        PktField:new{t='INT16', n='spkhoops1_2.max'},
+        PktField:new{t='INT16', n='spkhoops1_2.min'},
+        AField:new{n='spkhoops1_3', d='Defines the hoop used for sorting unit 1 hoop 3'},
+        PktField:new{t='UINT16', n='spkhoops1_3.valid'},
+        PktField:new{t='INT16', n='spkhoops1_3.time'},
+        PktField:new{t='INT16', n='spkhoops1_3.max'},
+        PktField:new{t='INT16', n='spkhoops1_3.min'},
+        AField:new{n='spkhoops1_4', d='Defines the hoop used for sorting unit 1 hoop 4'},
+        PktField:new{t='UINT16', n='spkhoops1_4.valid'},
+        PktField:new{t='INT16', n='spkhoops1_4.time'},
+        PktField:new{t='INT16', n='spkhoops1_4.max'},
+        PktField:new{t='INT16', n='spkhoops1_4.min'},
+        AField:new{n='spkhoops2_1', d='Defines the hoop used for sorting unit 2 hoop 1'},
+        PktField:new{t='UINT16', n='spkhoops2_1.valid'},
+        PktField:new{t='INT16', n='spkhoops2_1.time'},
+        PktField:new{t='INT16', n='spkhoops2_1.max'},
+        PktField:new{t='INT16', n='spkhoops2_1.min'},
+        AField:new{n='spkhoops2_2', d='Defines the hoop used for sorting unit 2 hoop 2'},
+        PktField:new{t='UINT16', n='spkhoops2_2.valid'},
+        PktField:new{t='INT16', n='spkhoops2_2.time'},
+        PktField:new{t='INT16', n='spkhoops2_2.max'},
+        PktField:new{t='INT16', n='spkhoops2_2.min'},
+        AField:new{n='spkhoops2_3', d='Defines the hoop used for sorting unit 2 hoop 3'},
+        PktField:new{t='UINT16', n='spkhoops2_3.valid'},
+        PktField:new{t='INT16', n='spkhoops2_3.time'},
+        PktField:new{t='INT16', n='spkhoops2_3.max'},
+        PktField:new{t='INT16', n='spkhoops2_3.min'},
+        AField:new{n='spkhoops2_4', d='Defines the hoop used for sorting unit 2 hoop 4'},
+        PktField:new{t='UINT16', n='spkhoops2_4.valid'},
+        PktField:new{t='INT16', n='spkhoops2_4.time'},
+        PktField:new{t='INT16', n='spkhoops2_4.max'},
+        PktField:new{t='INT16', n='spkhoops2_4.min'},
+        AField:new{n='spkhoops3_1', d='Defines the hoop used for sorting unit 3 hoop 1'},
+        PktField:new{t='UINT16', n='spkhoops3_1.valid'},
+        PktField:new{t='INT16', n='spkhoops3_1.time'},
+        PktField:new{t='INT16', n='spkhoops3_1.max'},
+        PktField:new{t='INT16', n='spkhoops3_1.min'},
+        AField:new{n='spkhoops3_2', d='Defines the hoop used for sorting unit 3 hoop 2'},
+        PktField:new{t='UINT16', n='spkhoops3_2.valid'},
+        PktField:new{t='INT16', n='spkhoops3_2.time'},
+        PktField:new{t='INT16', n='spkhoops3_2.max'},
+        PktField:new{t='INT16', n='spkhoops3_2.min'},
+        AField:new{n='spkhoops3_3', d='Defines the hoop used for sorting unit 3 hoop 3'},
+        PktField:new{t='UINT16', n='spkhoops3_3.valid'},
+        PktField:new{t='INT16', n='spkhoops3_3.time'},
+        PktField:new{t='INT16', n='spkhoops3_3.max'},
+        PktField:new{t='INT16', n='spkhoops3_3.min'},
+        AField:new{n='spkhoops3_4', d='Defines the hoop used for sorting unit 3 hoop 4'},
+        PktField:new{t='UINT16', n='spkhoops3_4.valid'},
+        PktField:new{t='INT16', n='spkhoops3_4.time'},
+        PktField:new{t='INT16', n='spkhoops3_4.max'},
+        PktField:new{t='INT16', n='spkhoops3_4.min'},
+        AField:new{n='spkhoops4_1', d='Defines the hoop used for sorting unit 4 hoop 1'},
+        PktField:new{t='UINT16', n='spkhoops4_1.valid'},
+        PktField:new{t='INT16', n='spkhoops4_1.time'},
+        PktField:new{t='INT16', n='spkhoops4_1.max'},
+        PktField:new{t='INT16', n='spkhoops4_1.min'},
+        AField:new{n='spkhoops4_2', d='Defines the hoop used for sorting unit 4 hoop 2'},
+        PktField:new{t='UINT16', n='spkhoops4_2.valid'},
+        PktField:new{t='INT16', n='spkhoops4_2.time'},
+        PktField:new{t='INT16', n='spkhoops4_2.max'},
+        PktField:new{t='INT16', n='spkhoops4_2.min'},
+        AField:new{n='spkhoops4_3', d='Defines the hoop used for sorting unit 4 hoop 3'},
+        PktField:new{t='UINT16', n='spkhoops4_3.valid'},
+        PktField:new{t='INT16', n='spkhoops4_3.time'},
+        PktField:new{t='INT16', n='spkhoops4_3.max'},
+        PktField:new{t='INT16', n='spkhoops4_3.min'},
+        AField:new{n='spkhoops4_4', d='Defines the hoop used for sorting unit 4 hoop 4'},
+        PktField:new{t='UINT16', n='spkhoops4_4.valid'},
+        PktField:new{t='INT16', n='spkhoops4_4.time'},
+        PktField:new{t='INT16', n='spkhoops4_4.max'},
+        PktField:new{t='INT16', n='spkhoops4_4.min'},
+        AField:new{n='spkhoops5_1', d='Defines the hoop used for sorting unit 5 hoop 1'},
+        PktField:new{t='UINT16', n='spkhoops5_1.valid'},
+        PktField:new{t='INT16', n='spkhoops5_1.time'},
+        PktField:new{t='INT16', n='spkhoops5_1.max'},
+        PktField:new{t='INT16', n='spkhoops5_1.min'},
+        AField:new{n='spkhoops5_2', d='Defines the hoop used for sorting unit 5 hoop 2'},
+        PktField:new{t='UINT16', n='spkhoops5_2.valid'},
+        PktField:new{t='INT16', n='spkhoops5_2.time'},
+        PktField:new{t='INT16', n='spkhoops5_2.max'},
+        PktField:new{t='INT16', n='spkhoops5_2.min'},
+        AField:new{n='spkhoops5_3', d='Defines the hoop used for sorting unit 5 hoop 3'},
+        PktField:new{t='UINT16', n='spkhoops5_3.valid'},
+        PktField:new{t='INT16', n='spkhoops5_3.time'},
+        PktField:new{t='INT16', n='spkhoops5_3.max'},
+        PktField:new{t='INT16', n='spkhoops5_3.min'},
+        AField:new{n='spkhoops5_4', d='Defines the hoop used for sorting unit 5 hoop 4'},
+        PktField:new{t='UINT16', n='spkhoops5_4.valid'},
+        PktField:new{t='INT16', n='spkhoops5_4.time'},
+        PktField:new{t='INT16', n='spkhoops5_4.max'},
+        PktField:new{t='INT16', n='spkhoops5_4.min'},
 
-        AField:new{n='placeholder', d='→ Other fields [unitmapping, spkhoops] of this packet have not been implemented yet. ←'},
+        -- AField:new{n='placeholder', d='→ Other fields [unitmapping, spkhoops] of this packet have not been implemented yet. ←'},
 
         _types={
             [0x0040] = "cbPKTTYPE_CHANREP",
@@ -960,7 +1093,7 @@ local CbPktVideosynch = CbPktConfig:new('cbPKT_VIDEOSYNCH',
     {
         PktField:new{t='UINT16', n='split', d="file split number"},
         PktField:new{t='UINT32', n='frame'},
-        PktField:new{t='UINT32', n='etime', d="elapsed time"},
+        PktField:new{t='UINT16', n='etime', d="elapsed time"},
         PktField:new{t='UINT16', n='id', d="video source id"},
         _types={
             [0x0029] = "VideoSynch Report cbPKTTYPE_VIDEOSYNCHREP",
@@ -1091,17 +1224,6 @@ local CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
     }
 )
 
--- DOut set packets
-local CbPktDOut = CbPktConfig:new('cbPKT_SET_DOUT',
-    {
-        PktField:new{t='INT16', n='chan', format='DEC'},
-        PktField:new{t='INT16', n='value'},
-        _types={
-            [0x005D] = "Set Dout Report cbPKTTYPE_SET_DOUTREP",
-            [0x00DD] = "Set Dout Request cbPKTTYPE_SET_DOUTSET",
-        }
-    }
-)
 
 -- Preview streams
 -- Configuration
@@ -1130,13 +1252,15 @@ local CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
 -- Comment Packets
 local CbPktComment = CbPktConfig:new('cbPKT_COMMENT',
     {
-        PktField:new{t='UINT8', n='charset', format='HEX'},
+        PktField:new{t='UINT8', n='type', format='HEX'},
+        PktField:new{t='UINT8', n='flags', d='Comment flags', format='HEX', valuestring={
+            [0x00]="RGBA cbCOMMENT_FLAG_RGBA",
+            [0x01]="RGBA cbCOMMENT_FLAG_TIMESTAMP",
+        }},
         PktField:new{t='UINT8', n='reserved', format='HEX'},
         PktField:new{t='UINT8', n='reserved', format='HEX'},
-        PktField:new{t='UINT8', n='reserved', format='HEX'},
-        PktField:new{t='UINT64', n='time', d='Comment Start Time', format='HEX'},
-        PktField:new{t='UINT32', n='rgba', format='HEX'},
-        PktField:new{t='STRING', n='comment', d='First 8 chars of comment', len=8},
+        PktField:new{t='UINT32', n='data', format='HEX'},
+        PktField:new{t='STRING', n='comment', len=128},
         _types={
             [0x0031] = "Comment response cbPKTTYPE_COMMENTREP",
             [0x00B1] = "Comment request cbPKTTYPE_COMMENTSET",
@@ -1285,7 +1409,7 @@ function ProtoMaker:register()
             pinfo.cols.info:append(" (+ " .. (i-1) .. " other" .. (i>2 and 's' or '') .. ")")
         end
 
-        local f_interface_id = fe_interface_id_f()
+        local f_interface_id = fe_interface_id_f() 
         pinfo.cols.info:prepend("NSP:" .. tostring(f_interface_id) .. " ")
 
     end
