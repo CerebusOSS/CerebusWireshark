@@ -237,8 +237,8 @@ function CbPkt:match(chid, pkt_type)
     if chid == self._conf_pkg_ch and pkt_type ~= nil and self.conf_type_map[1][pkt_type] ~= nil then
         return self.conf_type_map[1][pkt_type]
     end
-    if bit32.band(chid, self._conf_pkg_ch) == self._conf_pkg_ch and
-        bit32.band(chid, bit32.bnot(self._conf_pkg_ch)) > 0 and
+    if (chid & self._conf_pkg_ch) == self._conf_pkg_ch and
+        (chid & ~(self._conf_pkg_ch)) > 0 and
         pkt_type ~= nil and
         self.conf_type_map[2][pkt_type] ~= nil then
         return self.conf_type_map[2][pkt_type]
