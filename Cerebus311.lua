@@ -57,7 +57,7 @@ function Stack:Create(default_element)
     end
 
     -- return unpacked entries
-    return unpack(entries)
+    return table.unpack(entries)
   end
 
   -- get entries
