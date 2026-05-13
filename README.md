@@ -15,6 +15,7 @@ Embedded software versions map to protocol version as follows:
 * 7.0.x :: 3.11
 * 7.5 :: 4.0 (very limited release, please upgrade!)
 * 7.6 :: 4.1
+* 7.8 :: 4.2
 
 ## Use
 
