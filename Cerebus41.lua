@@ -1093,7 +1093,7 @@ local CbPktVideosynch = CbPktConfig:new('cbPKT_VIDEOSYNCH',
     {
         PktField:new{t='UINT16', n='split', d="file split number"},
         PktField:new{t='UINT32', n='frame'},
-        PktField:new{t='UINT16', n='etime', d="elapsed time"},
+        PktField:new{t='UINT32', n='etime', d="elapsed time"},
         PktField:new{t='UINT16', n='id', d="video source id"},
         _types={
             [0x0029] = "VideoSynch Report cbPKTTYPE_VIDEOSYNCHREP",
@@ -1183,6 +1183,7 @@ local CbPktAoutWaveform = CbPktConfig:new('cbPKT_AOUT_WAVEFORM',
         PktField:new{t='UINT8', n='trigInst', d="Instrument the trigChan belongs"},
         PktField:new{t='UINT16', n='trigChan'},
         PktField:new{t='UINT16', n='trigValue'},
+        PktField:new{t='UINT8', n='trigNum'},
         PktField:new{t='UINT8', n='active'},
 
         AField:new{n='waveform'},
@@ -1224,6 +1225,17 @@ local CbPktSSArtifReject = CbPktConfig:new('cbPKT_SS_ARTIF_REJECT',
     }
 )
 
+-- DOut set packets
+local CbPktDOut = CbPktConfig:new('cbPKT_SET_DOUT',
+    {
+        PktField:new{t='INT16', n='chan', format='DEC'},
+        PktField:new{t='INT16', n='value'},
+        _types={
+            [0x005D] = "Set Dout Report cbPKTTYPE_SET_DOUTREP",
+            [0x00DD] = "Set Dout Request cbPKTTYPE_SET_DOUTSET",
+        }
+    }
+)
 
 -- Preview streams
 -- Configuration
@@ -1252,15 +1264,13 @@ local CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
 -- Comment Packets
 local CbPktComment = CbPktConfig:new('cbPKT_COMMENT',
     {
-        PktField:new{t='UINT8', n='type', format='HEX'},
-        PktField:new{t='UINT8', n='flags', d='Comment flags', format='HEX', valuestring={
-            [0x00]="RGBA cbCOMMENT_FLAG_RGBA",
-            [0x01]="RGBA cbCOMMENT_FLAG_TIMESTAMP",
-        }},
+        PktField:new{t='UINT8', n='charset', format='HEX'},
         PktField:new{t='UINT8', n='reserved', format='HEX'},
         PktField:new{t='UINT8', n='reserved', format='HEX'},
-        PktField:new{t='UINT32', n='data', format='HEX'},
-        PktField:new{t='STRING', n='comment', len=128},
+        PktField:new{t='UINT8', n='reserved', format='HEX'},
+        PktField:new{t='UINT64', n='time', d='Comment Start Time', format='HEX'},
+        PktField:new{t='UINT32', n='rgba', format='HEX'},
+        PktField:new{t='STRING', n='comment', d='First 8 chars of comment', len=8},
         _types={
             [0x0031] = "Comment response cbPKTTYPE_COMMENTREP",
             [0x00B1] = "Comment request cbPKTTYPE_COMMENTSET",
@@ -1409,7 +1419,7 @@ function ProtoMaker:register()
             pinfo.cols.info:append(" (+ " .. (i-1) .. " other" .. (i>2 and 's' or '') .. ")")
         end
 
-        local f_interface_id = fe_interface_id_f() 
+        local f_interface_id = fe_interface_id_f()
         pinfo.cols.info:prepend("NSP:" .. tostring(f_interface_id) .. " ")
 
     end
