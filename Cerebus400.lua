@@ -1291,15 +1291,13 @@ local CbPktLNCPrev = CbPktPrevStreamBase:new('cbPKT_LNCPREV',
 -- Comment Packets
 local CbPktComment = CbPktConfig:new('cbPKT_COMMENT',
     {
-        PktField:new{t='UINT8', n='type', format='HEX'},
-        PktField:new{t='UINT8', n='flags', d='Comment flags', format='HEX', valuestring={
-            [0x00]="RGBA cbCOMMENT_FLAG_RGBA",
-            [0x01]="RGBA cbCOMMENT_FLAG_TIMESTAMP",
-        }},
+        PktField:new{t='UINT8', n='charset', format='HEX'},
         PktField:new{t='UINT8', n='reserved', format='HEX'},
         PktField:new{t='UINT8', n='reserved', format='HEX'},
-        PktField:new{t='UINT32', n='data', format='HEX'},
-        PktField:new{t='STRING', n='comment', len=128},
+        PktField:new{t='UINT8', n='reserved', format='HEX'},
+        PktField:new{t='UINT64', n='time', d='Comment Start Time', format='HEX'},
+        PktField:new{t='UINT32', n='rgba', format='HEX'},
+        PktField:new{t='STRING', n='comment', d='First 8 chars of comment', len=8},
         _types={
             [0x31] = "Comment response cbPKTTYPE_COMMENTREP",
             [0xB1] = "Comment request cbPKTTYPE_COMMENTSET",
